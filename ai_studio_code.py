@@ -677,11 +677,20 @@ async def verify_upi_payment(event, order_id):
                  Button.inline("❌ Reject", f"dep_rej|{dep_id}|{uid}")]
             ]
             
-            await bot.send_message(LOG_CHANNEL_ID, cap, buttons=btns)
+            try:
+                await bot.send_message(LOG_CHANNEL_ID, cap, buttons=btns)
+            except Exception as log_err:
+                try:
+                    await bot.send_message(ADMIN_ID, f"⚠️ <b>LOG CHANNEL ERROR</b>\n\n{cap}", buttons=btns)
+                except Exception as admin_err:
+                    print(f"Failed to log UPI deposit: {admin_err}")
+                
             await conv.send_message("✅ <b>UTR Submitted successfully!</b>\nAmount will be added to your balance as soon as our system/admin verifies the payment.")
             
         except Exception as e:
-            await conv.send_message("❌ Time out or Error. Try again.")
+            import traceback
+            traceback.print_exc()
+            await conv.send_message(f"❌ Time out or Error: {e}")
 
 # ================= BUYING FLOW =================
 async def show_countries(event, flow, page=1):
@@ -1628,7 +1637,11 @@ async def handle_all_messages(e):
                 if e.photo: await bot.send_message(LOG_CHANNEL_ID, cap, file=e.media, buttons=btns)
                 else: await bot.send_message(LOG_CHANNEL_ID, cap + f"\n🔗 Hash: {html.escape(e.text)}", buttons=btns)
             except Exception as log_err:
-                logger.error(f"Failed to log deposit: {log_err}")
+                try:
+                    if e.photo: await bot.send_message(ADMIN_ID, f"⚠️ <b>LOG CHANNEL ERROR</b>\n\n{cap}", file=e.media, buttons=btns)
+                    else: await bot.send_message(ADMIN_ID, f"⚠️ <b>LOG CHANNEL ERROR</b>\n\n{cap}\n🔗 Hash: {html.escape(e.text)}", buttons=btns)
+                except Exception as admin_err:
+                    logger.error(f"Failed to log deposit: {admin_err}")
             return
 
         text = e.text or ""
