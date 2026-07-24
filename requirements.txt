@@ -8,6 +8,7 @@ multidict==6.7.1
 propcache==0.5.2
 pyaes==1.6.1
 pyasn1==0.6.4
+pyflakes==3.4.0
 python-dotenv==1.2.2
 rsa==4.9.1
 Telethon==1.44.0
