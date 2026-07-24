@@ -35,6 +35,10 @@ env/
 *.db
 *.sqlite
 *.sqlite3
+*.db-wal
+*.db-shm
+*.sqlite-wal
+*.sqlite-shm
 
 # Telegram sessions & transient logs
 *.session
