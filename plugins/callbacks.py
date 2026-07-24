@@ -3,7 +3,7 @@ from telethon import events, Button
 from telethon.errors import MessageNotModifiedError
 from database import cur, db, get_support_url, to_usd, get_flag_by_country_name
 from config import P_NO, P_MONEY, P_INR, P_GIFT, P_USERS, PE_LOCATION, PE_GIFT, PE_CROWN
-from utils.states import session_buy_state, deposit_input, active_orders
+from utils.states import session_buy_state, deposit_input, active_orders, waiting_proof
 from plugins.start import send_main_menu
 from utils.helpers import check_channel_joined
 from utils.keyboards import style_btn
@@ -29,8 +29,10 @@ def register_callbacks(bot):
         uid = e.sender_id
         deposit_input.pop(uid, None)
         session_buy_state.pop(uid, None)
-        try: await e.edit(f"{P_NO} <b>Cancelled.</b>")
-        except MessageNotModifiedError: pass
+        waiting_proof.pop(uid, None)
+        try: await e.delete()
+        except Exception: pass
+        await e.answer("Cancelled", alert=False)
 
     @bot.on(events.CallbackQuery(pattern=b"^verify_join$"))
     async def cb_verify_join(e):
