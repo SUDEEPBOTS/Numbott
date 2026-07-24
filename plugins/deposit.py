@@ -4,7 +4,7 @@ import html
 from telethon import events, Button
 from telethon.errors import MessageNotModifiedError
 from database import cur, db, get_usdt_rate, update_balance, to_usd
-from config import PE_GIFT, PE_LIGHTNING, P_MONEY, P_CARD, P_UPI, P_CW, P_NO, P_YES, P_WARN, P_INR, P_USDT, P_KEY, PE_CHECK, P_ACC, P_ID, LOG_CHANNEL_ID, LOG_CHANNELS, ADMIN_ID, CWALLET_QR, CWALLET_ID, bot, logger
+from config import PE_GIFT, PE_LIGHTNING, P_MONEY, P_CARD, P_UPI, P_CW, P_NO, P_YES, P_WARN, P_INR, P_USDT, P_KEY, PE_CHECK, P_ACC, P_ID, LOG_CHANNEL_ID, LOG_CHANNELS, ADMIN_ID, CWALLET_QR, CWALLET_ID, UPI_ID, bot, logger
 from utils.keyboards import style_btn
 from utils.states import deposit_input, waiting_proof, admin_dep_state, custom_dep_amt, get_user_lock
 
@@ -97,6 +97,13 @@ def register_deposit(bot):
                        f"{rate_text}\n\n👉 <b>𝐒ᴇɴᴅ 𝐏ʀᴏᴏғ:</b>\n𝐏ʟᴇᴀsᴇ sᴇɴᴅ ᴛʜᴇ 𝐓ʀᴀɴsᴀᴄᴛɪᴏɴ 𝐇ᴀsʜ (𝐋ɪɴᴋ) ᴏʀ ᴀ 𝐒ᴄʀᴇᴇɴsʜᴏᴛ ᴏғ ᴛʜᴇ ᴘᴀʏᴍᴇɴᴛ ɴᴏᴡ.")
                 try: await bot.send_file(uid, CWALLET_QR, caption=msg, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
                 except Exception: await bot.send_message(uid, msg + f"\n\n🔗 QR Link: {CWALLET_QR}", buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
+            elif method == "UPI":
+                upi_url = f"upi://pay?pa={UPI_ID}&am={amt}"
+                qr_url = f"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl={upi_url}"
+                msg = (f"<blockquote>{P_UPI} <b>𝐌ᴇᴛʜᴏᴅ:</b> UPI\n\n🆔 <b>UPI ID:</b>\n<code>{UPI_ID}</code>"
+                       f"{rate_text}\n\n👉 <b>𝐒ᴇɴᴅ 𝐏ʀᴏᴏғ:</b>\n𝐏ʟᴇᴀsᴇ sᴇɴᴅ ᴀ ᴄʟᴇᴀʀ 𝐒ᴄʀᴇᴇɴsʜᴏᴛ ᴏғ ᴛʜᴇ ᴘᴀʏᴍᴇɴᴛ ɴᴏᴡ.</blockquote>")
+                try: await bot.send_file(uid, qr_url, caption=msg, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
+                except Exception: await bot.send_message(uid, msg, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
             else:
                 row = cur.execute("SELECT caption, qr_file_id FROM custom_payments WHERE name=?", (method,)).fetchone()
                 if row:
