@@ -32,28 +32,30 @@ def env_list(name, default_csv):
     raw = os.getenv(name, default_csv)
     return [item.strip() for item in raw.split(",") if item.strip()]
 
-API_ID = env_int("API_ID", 32208414)
-API_HASH = os.getenv("API_HASH", "628f11c05a44c8dda4b006e66f4bf7df")
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8975876483:AAE8vKK4O7OyubHJ1M0AGIcctoqlbB7-9_Q")
+API_ID = env_int("API_ID", 0)
+API_HASH = os.getenv("API_HASH", "")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 
 bot = TelegramClient('bot_session', API_ID, API_HASH)
 bot.parse_mode = 'html'
 
-ADMIN_ID = env_int("ADMIN_ID", 5298773697)  
+ADMIN_ID = env_int("ADMIN_ID", 0)
 
 # CHANNELS
-LOG_CHANNEL_ID = env_int("LOG_CHANNEL_ID", -1004452478102)
-CHECK_CHANNELS = env_list("CHECK_CHANNELS", "-1003933313239,-1003964347575")
-JOIN_URLS = env_list("JOIN_URLS", "https://t.me/+DE0UFPWq6yowMmQ9,https://t.me/I_VIP_RADHE_II")
+LOG_CHANNEL_ID = env_int("LOG_CHANNEL_ID", 0)
+LOG_CHANNEL_ID_2 = env_int("LOG_CHANNEL_ID_2", 0)
+LOG_CHANNELS = [ch for ch in [LOG_CHANNEL_ID, LOG_CHANNEL_ID_2] if ch]
+CHECK_CHANNELS = env_list("CHECK_CHANNELS", "")
+JOIN_URLS = env_list("JOIN_URLS", "")
 
 # LINKS & MEDIA
-TERMS_URL = os.getenv("TERMS_URL", "https://example.com/terms")
-CWALLET_QR = os.getenv("CWALLET_QR", "https://example.com/qr.jpg")
+TERMS_URL = os.getenv("TERMS_URL", "")
+CWALLET_QR = os.getenv("CWALLET_QR", "")
 CWALLET_ID = os.getenv("CWALLET_ID", "")
 
 # UPI API DETAILS
 UPI_MID = os.getenv("UPI_MID", "")
-UPI_ID = os.getenv("UPI_ID", "vinit-godara@fam")
+UPI_ID = os.getenv("UPI_ID", "")
 
 OTP_REGEX = r"\b\d{4,8}\b"
 AUTO_CANCEL_SECONDS = 600

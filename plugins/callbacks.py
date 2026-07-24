@@ -35,14 +35,19 @@ def register_callbacks(bot):
     @bot.on(events.CallbackQuery(pattern=b"^verify_join$"))
     async def cb_verify_join(e):
         uid = e.sender_id
-        is_joined = await check_channel_joined(bot, uid, is_admin)
-        if is_joined:
+        from utils.helpers import get_unjoined_channels
+        from utils.keyboards import style_btn
+        from config import PE_FLOWER, PE_LOCATION
+
+        unjoined = await get_unjoined_channels(bot, uid)
+        
+        if not unjoined:
+            # All channels joined!
             await e.answer("✅ Verification successful!", alert=True)
             row = cur.execute("SELECT terms_accepted FROM users WHERE user_id=?", (uid,)).fetchone()
             terms_acc = row[0] if row else 0
             if not terms_acc:
                 from utils.keyboards import get_terms_buttons
-                from config import PE_FLOWER
                 msg = f"<blockquote>{PE_FLOWER} <b>𝐓ᴇʀᴍs & 𝐂ᴏɴᴅɪᴛɪᴏɴs</b></blockquote>\n<blockquote>𝐏ʟᴇᴀsᴇ ʀᴇᴀᴅ ᴀɴᴅ ᴀᴄᴄᴇᴘᴛ ᴏᴜʀ 𝐓ᴇʀᴍs & 𝐂ᴏɴᴅɪᴛɪᴏɴs ʙᴇғᴏʀᴇ ᴜsɪɴɢ ᴛʜᴇ ʙᴏᴛ.</blockquote>"
                 try: await e.edit(msg, buttons=get_terms_buttons())
                 except MessageNotModifiedError: pass
@@ -50,7 +55,14 @@ def register_callbacks(bot):
                 await e.delete()
                 await send_main_menu(bot, e, uid)
         else:
-            await e.answer("❌ You haven't joined all channels yet!", alert=True)
+            # Show only unjoined channels
+            remaining = len(unjoined)
+            await e.answer(f"❌ {remaining} channel(s) not joined yet!", alert=True)
+            buttons = [[Button.url(f"📢 Join Channel {idx}", url)] for url, idx in unjoined]
+            buttons.append([style_btn("𝐕ᴇʀɪғʏ 𝐉ᴏɪɴᴇᴅ", b"verify_join", "success", icon=6129627894349045589)])
+            msg = f"<blockquote>{PE_FLOWER} <b>𝐘ᴏᴜ ᴍᴜsᴛ ᴊᴏɪɴ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs ғɪʀsᴛ!</b></blockquote>\n<blockquote>{PE_LOCATION} {remaining} ᴄʜᴀɴɴᴇʟ(s) ʀᴇᴍᴀɪɴɪɴɢ. 𝐉ᴏɪɴ ᴀɴᴅ ᴛᴀᴘ <b>𝐕ᴇʀɪғʏ 𝐉ᴏɪɴᴇᴅ</b>.</blockquote>"
+            try: await e.edit(msg, buttons=buttons)
+            except MessageNotModifiedError: pass
 
     # ── Keyboard Button Handlers ──
 

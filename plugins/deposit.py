@@ -4,7 +4,7 @@ import html
 from telethon import events, Button
 from telethon.errors import MessageNotModifiedError
 from database import cur, db, get_usdt_rate, update_balance, to_usd
-from config import PE_GIFT, PE_LIGHTNING, P_MONEY, P_CARD, P_UPI, P_CW, P_NO, P_YES, P_WARN, P_INR, P_USDT, P_KEY, PE_CHECK, P_ACC, P_ID, LOG_CHANNEL_ID, ADMIN_ID, CWALLET_QR, CWALLET_ID, bot, logger
+from config import PE_GIFT, PE_LIGHTNING, P_MONEY, P_CARD, P_UPI, P_CW, P_NO, P_YES, P_WARN, P_INR, P_USDT, P_KEY, PE_CHECK, P_ACC, P_ID, LOG_CHANNEL_ID, LOG_CHANNELS, ADMIN_ID, CWALLET_QR, CWALLET_ID, bot, logger
 from utils.keyboards import style_btn
 from utils.states import deposit_input, waiting_proof, admin_dep_state, custom_dep_amt, get_user_lock
 
@@ -126,8 +126,11 @@ def register_deposit(bot):
                 [style_btn("𝐂ᴜsᴛᴏᴍ 𝐀ᴍᴏᴜɴᴛ", f"dep_acc|{dep_id}|{uid}|{info['method']}|custom|0", "primary", icon=5409098988156629257)]]
         
         try:
-            if e.photo: await bot.send_message(LOG_CHANNEL_ID, cap, file=e.media, buttons=btns)
-            else: await bot.send_message(LOG_CHANNEL_ID, cap + f"\n🔗 Hash: {html.escape(e.text)}", buttons=btns)
+            for log_ch in LOG_CHANNELS:
+                try:
+                    if e.photo: await bot.send_message(log_ch, cap, file=e.media, buttons=btns)
+                    else: await bot.send_message(log_ch, cap + f"\n🔗 Hash: {html.escape(e.text)}", buttons=btns)
+                except Exception: pass
         except Exception as log_err:
             try:
                 if e.photo: await bot.send_message(ADMIN_ID, f"⚠️ <b>LOG CHANNEL ERROR</b>\n\n{cap}", file=e.media, buttons=btns)
@@ -184,7 +187,12 @@ def register_deposit(bot):
         cur.execute("UPDATE deposits SET status='rejected' WHERE id=?", (dep_id,))
         db.commit()
         
-        try: await bot.edit_message(LOG_CHANNEL_ID, msg_id, f"{P_NO} <b>REJECTED USER {t_uid}</b>\nReason: {html.escape(e.text)}")
+        try:
+            await bot.edit_message(LOG_CHANNEL_ID, msg_id, f"{P_NO} <b>REJECTED USER {t_uid}</b>\nReason: {html.escape(e.text)}")
+            for log_ch in LOG_CHANNELS:
+                if log_ch != LOG_CHANNEL_ID:
+                    try: await bot.send_message(log_ch, f"{P_NO} <b>REJECTED USER {t_uid}</b>\nReason: {html.escape(e.text)}")
+                    except: pass
         except: pass
         
         await bot.send_message(int(t_uid), f"{P_NO} <b>Deposit 𝐑ᴇᴊᴇᴄᴛed!</b>\n📋 Reason: {html.escape(e.text)}")
