@@ -1,6 +1,7 @@
 import os
 import re
 import html
+import urllib.parse
 from telethon import events, Button
 from telethon.errors import MessageNotModifiedError
 from database import cur, db, get_usdt_rate, update_balance, to_usd
@@ -99,11 +100,15 @@ def register_deposit(bot):
                 except Exception: await bot.send_message(uid, msg + f"\n\n🔗 QR Link: {CWALLET_QR}", buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
             elif method == "UPI":
                 upi_url = f"upi://pay?pa={UPI_ID}&am={amt}"
-                qr_url = f"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl={upi_url}"
+                encoded_upi = urllib.parse.quote(upi_url)
+                qr_url = f"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl={encoded_upi}"
                 msg = (f"<blockquote>{P_UPI} <b>𝐌ᴇᴛʜᴏᴅ:</b> UPI\n\n🆔 <b>UPI ID:</b>\n<code>{UPI_ID}</code>"
                        f"{rate_text}\n\n👉 <b>𝐒ᴇɴᴅ 𝐏ʀᴏᴏғ:</b>\n𝐏ʟᴇᴀsᴇ sᴇɴᴅ ᴀ ᴄʟᴇᴀʀ 𝐒ᴄʀᴇᴇɴsʜᴏᴛ ᴏғ ᴛʜᴇ ᴘᴀʏᴍᴇɴᴛ ɴᴏᴡ.</blockquote>")
-                try: await bot.send_file(uid, qr_url, caption=msg, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
-                except Exception: await bot.send_message(uid, msg, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
+                try: 
+                    await bot.send_file(uid, qr_url, caption=msg, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
+                except Exception as e: 
+                    logger.error(f"Failed to send UPI QR: {e}")
+                    await bot.send_message(uid, msg, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
             else:
                 row = cur.execute("SELECT caption, qr_file_id FROM custom_payments WHERE name=?", (method,)).fetchone()
                 if row:
