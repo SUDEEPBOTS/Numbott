@@ -1,6 +1,7 @@
 import os
 import re
 import time
+import asyncio
 import csv
 import zipfile
 import shutil
@@ -13,6 +14,24 @@ from config import *
 from utils.keyboards import style_btn
 from utils.states import admin_state
 from plugins.admin import admin_panel_handler
+
+async def detect_account_year(client):
+    """Detect account creation year from earliest dialog/message."""
+    try:
+        me = await client.get_me()
+        # Try using the user's own ID creation date approximation
+        # Get the earliest message in Saved Messages
+        async for msg in client.iter_messages('me', limit=1, reverse=True):
+            if msg.date:
+                return msg.date.year
+        # Fallback: check earliest dialog
+        async for dialog in client.iter_dialogs(limit=5):
+            if dialog.date:
+                return dialog.date.year
+    except Exception:
+        pass
+    from datetime import datetime
+    return datetime.now().year
 
 async def manage_admins_menu(event):
     rows = cur.execute("SELECT user_id FROM admins").fetchall()

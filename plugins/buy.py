@@ -6,7 +6,7 @@ import re
 from telethon import events, Button, TelegramClient
 from telethon.errors import MessageNotModifiedError
 from database import cur, db, get_flag_by_country_name
-from config import PE_LOCATION, PE_GIFT, PE_LIGHTNING, PE_CHECK, P_MONEY, P_PKG, P_CARD, P_WARN, P_NO, P_YES, P_INR, P_TIME, P_FLAG, P_OTP, P_2FA, P_PHONE, AUTO_CANCEL_SECONDS, OTP_REGEX, bot, logger
+from config import PE_LOCATION, PE_GIFT, PE_LIGHTNING, PE_CHECK, P_MONEY, P_PKG, P_CARD, P_WARN, P_NO, P_YES, P_INR, P_TIME, P_FLAG, P_OTP, P_2FA, P_PHONE, AUTO_CANCEL_SECONDS, OTP_REGEX, bot, logger, API_ID, API_HASH
 from utils.keyboards import style_btn
 from utils.states import active_orders, session_buy_state, get_user_lock
 
@@ -78,7 +78,7 @@ async def process_purchase(event, country, year, price_str):
 
     await event.edit(f"{PE_LIGHTNING} <b>𝐏ʀᴏᴄᴇssɪɴɢ ʏᴏᴜʀ ᴏʀᴅᴇʀ...</b>\n𝐏ʟᴇᴀsᴇ ᴡᴀɪᴛ ᴡʜɪʟᴇ ᴡᴇ ɪɴɪᴛɪᴀʟɪᴢᴇ ᴛʜᴇ sᴇssɪᴏɴ.")
     
-    client = TelegramClient(sess, config.API_ID, config.API_HASH)
+    client = TelegramClient(sess, API_ID, API_HASH)
     try: await client.connect()
     except Exception as e:
         logger.error(f"Client init error: {e}")
