@@ -1,0 +1,24 @@
+services:
+  - type: worker
+    name: numbott-telethon
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    autoDeploy: false
+    envVars:
+      - key: API_ID
+        sync: false
+      - key: API_HASH
+        sync: false
+      - key: BOT_TOKEN
+        sync: false
+      - key: ADMIN_ID
+        sync: false
+      - key: LOG_CHANNEL_ID
+        sync: false
+      - key: CHECK_CHANNELS
+        sync: false
+      - key: JOIN_URLS
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.10.12
