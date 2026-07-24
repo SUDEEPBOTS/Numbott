@@ -26,7 +26,7 @@ async def send_main_menu(bot, event, uid):
     await bot.send_file(uid, media, caption=msg, buttons=get_persistent_menu(uid))
 
 def register_start(bot):
-    @bot.on(events.NewMessage(pattern=r"(?i)^/start"))
+    @bot.on(events.NewMessage(pattern=r"(?i)^(/start|🏠 𝐒ᴛᴀʀᴛ)"))
     async def handle_start(e):
         try:
             uid = e.sender_id

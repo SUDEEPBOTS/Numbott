@@ -1,11 +1,12 @@
 import os
-from telethon import events
+from telethon import events, Button
 from telethon.errors import MessageNotModifiedError
-from database import cur, db
-from config import P_NO
+from database import cur, db, get_support_url, to_usd, get_flag_by_country_name
+from config import P_NO, P_MONEY, P_INR, P_GIFT, P_USERS, PE_LOCATION, PE_GIFT, PE_CROWN
 from utils.states import session_buy_state, deposit_input, active_orders
 from plugins.start import send_main_menu
 from utils.helpers import check_channel_joined
+from utils.keyboards import style_btn
 from database import is_admin
 
 def register_callbacks(bot):
@@ -15,8 +16,6 @@ def register_callbacks(bot):
         cur.execute("UPDATE users SET terms_accepted=1 WHERE user_id=?", (uid,))
         db.commit()
         await e.answer("✅ Terms Accepted!", alert=True)
-        # Cannot easily edit from text to media without risking error in some clients if we don't supply file correctly
-        # So we just delete the terms message and send the main menu
         await e.delete()
         await send_main_menu(bot, e, uid)
 
@@ -39,9 +38,6 @@ def register_callbacks(bot):
         is_joined = await check_channel_joined(bot, uid, is_admin)
         if is_joined:
             await e.answer("✅ Verification successful!", alert=True)
-            # Re-run start logic (will prompt for terms if not accepted)
-            # A simple approach is just to delete the join message and call start again by sending main menu
-            # But we must check terms first. We can just import and call handle_start logic or send_main_menu
             row = cur.execute("SELECT terms_accepted FROM users WHERE user_id=?", (uid,)).fetchone()
             terms_acc = row[0] if row else 0
             if not terms_acc:
@@ -55,3 +51,62 @@ def register_callbacks(bot):
                 await send_main_menu(bot, e, uid)
         else:
             await e.answer("❌ You haven't joined all channels yet!", alert=True)
+
+    # ── Keyboard Button Handlers ──
+
+    @bot.on(events.NewMessage(pattern=r"(?i)^(📦 𝐌ʏ 𝐎ʀᴅᴇʀs|📦 My Orders)$"))
+    async def msg_my_orders(e):
+        uid = e.sender_id
+        rows = cur.execute("SELECT phone, country, price, date FROM orders WHERE user_id=? ORDER BY id DESC LIMIT 10", (uid,)).fetchall()
+        if not rows:
+            return await e.respond(f"<blockquote>{PE_GIFT} <b>𝐌ʏ 𝐎ʀᴅᴇʀs</b></blockquote>\n\n<blockquote>𝐍ᴏ ᴏʀᴅᴇʀs ʏᴇᴛ. 𝐁ᴜʏ ʏᴏᴜʀ ғɪʀsᴛ ᴀᴄᴄᴏᴜɴᴛ!</blockquote>")
+        msg = f"<blockquote>{PE_GIFT} <b>𝐌ʏ 𝐎ʀᴅᴇʀs</b> (𝐋ᴀsᴛ 10)</blockquote>\n\n"
+        for ph, cn, pr, dt in rows:
+            flag = get_flag_by_country_name(cn)
+            msg += f"<blockquote>{flag} {cn} | <code>{ph}</code>\n{P_MONEY} {P_INR}{pr} | 📅 {dt[:10]}</blockquote>\n"
+        await e.respond(msg)
+
+    @bot.on(events.NewMessage(pattern=r"(?i)^(💰 𝐁ᴀʟᴀɴᴄᴇ|💰 Balance)$"))
+    async def msg_balance(e):
+        uid = e.sender_id
+        row = cur.execute("SELECT balance FROM users WHERE user_id=?", (uid,)).fetchone()
+        bal = row[0] if row else 0
+        msg = (f"<blockquote>{PE_CROWN} <b>𝐘ᴏᴜʀ 𝐁ᴀʟᴀɴᴄᴇ</b></blockquote>\n\n"
+               f"<blockquote>{P_MONEY} <b>𝐁ᴀʟᴀɴᴄᴇ:</b> <code>{P_INR}{bal}</code>\n"
+               f"💲 <b>𝐔𝐒𝐃:</b> <code>${to_usd(bal):.2f}</code></blockquote>")
+        await e.respond(msg)
+
+    @bot.on(events.NewMessage(pattern=r"(?i)^(📊 𝐒ᴛᴏᴄᴋ|📊 Stock)$"))
+    async def msg_stock(e):
+        rows = cur.execute("SELECT country_name, COUNT(*) FROM stock WHERE available=1 GROUP BY country_name ORDER BY country_name").fetchall()
+        if not rows:
+            return await e.respond(f"<blockquote>{PE_LOCATION} <b>𝐒ᴛᴏᴄᴋ</b></blockquote>\n\n<blockquote>𝐍ᴏ sᴛᴏᴄᴋ ᴀᴠᴀɪʟᴀʙʟᴇ ʀɪɢʜᴛ ɴᴏᴡ.</blockquote>")
+        total = sum(c for _, c in rows)
+        msg = f"<blockquote>{PE_LOCATION} <b>𝐀ᴠᴀɪʟᴀʙʟᴇ 𝐒ᴛᴏᴄᴋ</b> ({total} ᴛᴏᴛᴀʟ)</blockquote>\n\n"
+        for cn, cnt in rows:
+            flag = get_flag_by_country_name(cn)
+            msg += f"<blockquote>{flag} <b>{cn}</b> — {cnt} ᴀᴄᴄᴏᴜɴᴛs</blockquote>\n"
+        await e.respond(msg)
+
+    @bot.on(events.NewMessage(pattern=r"(?i)^(🎁 𝐑ᴇғᴇʀ|🎁 Refer)$"))
+    async def msg_refer(e):
+        uid = e.sender_id
+        me = await bot.get_me()
+        bot_username = me.username or ""
+        ref_link = f"https://t.me/{bot_username}?start=ref_{uid}"
+        ref_count = cur.execute("SELECT COUNT(*) FROM users WHERE referred_by=?", (uid,)).fetchone()[0]
+        pct_row = cur.execute("SELECT value FROM settings WHERE key='referral_pct'").fetchone()
+        pct = pct_row[0] if pct_row else 3
+        msg = (f"<blockquote>{P_GIFT} <b>𝐑ᴇғᴇʀ & 𝐄ᴀʀɴ</b></blockquote>\n\n"
+               f"<blockquote>{P_USERS} <b>𝐘ᴏᴜʀ 𝐑ᴇғᴇʀʀᴀʟs:</b> {ref_count}\n"
+               f"💲 <b>𝐁ᴏɴᴜs:</b> {pct}% ᴏғ ᴇᴠᴇʀʏ ᴅᴇᴘᴏsɪᴛ</blockquote>\n\n"
+               f"<blockquote>🔗 <b>𝐘ᴏᴜʀ 𝐋ɪɴᴋ:</b>\n<code>{ref_link}</code></blockquote>\n\n"
+               f"<blockquote><i>𝐒ʜᴀʀᴇ ᴛʜɪs ʟɪɴᴋ ᴡɪᴛʜ ғʀɪᴇɴᴅs. 𝐖ʜᴇɴ ᴛʜᴇʏ ᴅᴇᴘᴏsɪᴛ, ʏᴏᴜ ᴇᴀʀɴ {pct}%!</i></blockquote>")
+        await e.respond(msg)
+
+    @bot.on(events.NewMessage(pattern=r"(?i)^(📩 𝐒ᴜᴘᴘᴏʀᴛ|📩 Support)$"))
+    async def msg_support(e):
+        url = get_support_url()
+        msg = f"<blockquote>📩 <b>𝐒ᴜᴘᴘᴏʀᴛ</b></blockquote>\n\n<blockquote>𝐅ᴏʀ ᴀɴʏ ɪssᴜᴇs ᴏʀ ǫᴜᴇsᴛɪᴏɴs, ᴄᴏɴᴛᴀᴄᴛ ᴏᴜʀ sᴜᴘᴘᴏʀᴛ:</blockquote>"
+        btns = [[Button.url("📩 𝐂ᴏɴᴛᴀᴄᴛ 𝐒ᴜᴘᴘᴏʀᴛ", url)]]
+        await e.respond(msg, buttons=btns)

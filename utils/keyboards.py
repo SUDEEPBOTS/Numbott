@@ -28,18 +28,15 @@ def get_join_buttons():
 def get_persistent_menu(uid):
     from database import is_admin
     from telethon import Button
-    icons = {
-        'buy': 5440627033111557670,  # gift
-        'dep': 5409271925014801629,  # lightning
-        'prof': 6203982793379154737, # angel
-        'adm': 5409166771330494453   # crown
-    }
     buttons = [
-        [Button.text("🛒 𝐁ᴜʏ 𝐀ᴄᴄᴏᴜɴᴛ", style="success", icon=icons['buy']), Button.text("💳 𝐃ᴇᴘᴏsɪᴛ", style="primary", icon=icons['dep'])],
-        [Button.text("👤 𝐏ʀᴏғɪʟᴇ", style="primary", icon=icons['prof'])]
+        [Button.text("🛒 𝐁ᴜʏ 𝐀ᴄᴄᴏᴜɴᴛ", style="success", icon=5440627033111557670), Button.text("💳 𝐃ᴇᴘᴏsɪᴛ", style="primary", icon=5409271925014801629)],
+        [Button.text("👤 𝐏ʀᴏғɪʟᴇ", style="primary", icon=6203982793379154737), Button.text("📦 𝐌ʏ 𝐎ʀᴅᴇʀs", style="primary", icon=5409098988156629257)],
+        [Button.text("💰 𝐁ᴀʟᴀɴᴄᴇ", style="success", icon=5409320020058584473), Button.text("📊 𝐒ᴛᴏᴄᴋ", style="primary", icon=6129627894349045589)],
+        [Button.text("🎁 𝐑ᴇғᴇʀ", style="success", icon=5354889508674360491), Button.text("📩 𝐒ᴜᴘᴘᴏʀᴛ", style="primary", icon=6129732880529628243)],
+        [Button.text("🏠 𝐒ᴛᴀʀᴛ", style="success", icon=6129399728506412489)]
     ]
     if is_admin(uid):
-        buttons.append([Button.text("🔐 𝐀ᴅᴍɪɴ 𝐏ᴀɴᴇʟ", style="danger", icon=icons['adm'])])
+        buttons.append([Button.text("🔐 𝐀ᴅᴍɪɴ 𝐏ᴀɴᴇʟ", style="danger", icon=5409166771330494453)])
     return buttons
 
 def get_support_buttons():

@@ -19,5 +19,11 @@ async def main():
 if __name__ == '__main__':
     bot.start(bot_token=BOT_TOKEN)
     register_all_handlers(bot)
+
+    from telethon import events
+    @bot.on(events.CallbackQuery)
+    async def debug_cb(e):
+        logger.warning(f"CALLBACK DATA: {e.data}")
+
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())

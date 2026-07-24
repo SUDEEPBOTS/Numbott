@@ -23,7 +23,7 @@ async def show_countries(event, mode, page):
     btns = []
     for c_name, count in countries:
         flag = get_flag_by_country_name(c_name)
-        btns.append(style_btn(f"{flag} {c_name} ({count}, icon=6154249597532248059)", f"bc|{mode}|{c_name}", "primary"))
+        btns.append(style_btn(f"{flag} {c_name} ({count})", f"bc|{mode}|{c_name}", "primary", icon=6154249597532248059))
         
     f_btns = [btns[i:i+2] for i in range(0, len(btns), 2)]
     
@@ -45,15 +45,15 @@ async def show_years(event, mode, country):
     flag = get_flag_by_country_name(country)
     btns = []
     for y, count, price in years:
-        btns.append([style_btn(f"{y} - {P_INR}{price} ({count} left, icon=5408995930416362034)", f"by|{mode}|{country}|{y}|{price}", "primary")])
+        btns.append([style_btn(f"{y} - {P_INR}{price} ({count} left)", f"by|{mode}|{country}|{y}|{price}", "primary", icon=5408995930416362034)])
     btns.append([style_btn("𝐁ᴀᴄᴋ", f"pg_c|{mode}|1", "danger", icon=6129812419028982717)])
     await event.edit(f"<blockquote>{flag} <b>𝐒ᴇʟᴇᴄᴛ 𝐘ᴇᴀʀ & 𝐏ʀɪᴄᴇ ғᴏʀ {country}:</b></blockquote>", buttons=btns)
 
 async def confirm_purchase(event, country, year, price):
     msg = f"<blockquote>{PE_GIFT} <b>𝐂ᴏɴғɪʀᴍ 𝐏ᴜʀᴄʜᴀsᴇ</b>\n\n{P_FLAG} 𝐂ᴏᴜɴᴛʀʏ: {country}\n📆 𝐘ᴇᴀʀ: {year}\n{P_MONEY} 𝐏ʀɪᴄᴇ: {P_INR}{price}\n\n𝐀ʀᴇ ʏᴏᴜ sᴜʀᴇ?"
     btns = [
-        [style_btn("𝐂ᴏɴғɪʀᴍ 𝐁ᴜʏ", f"buy_cf|{country}|{year}|{price}", "success", 5409098988156629257, icon=5409320020058584473)],
-        [Button.inline("𝐂ᴀɴᴄᴇʟ", "cancel_action")]
+        [style_btn("𝐂ᴏɴғɪʀᴍ 𝐁ᴜʏ", f"buy_cf|{country}|{year}|{price}", "success", icon=5409320020058584473)],
+        [style_btn("𝐂ᴀɴᴄᴇʟ", "cancel_action", "danger", icon=6129888444245089008)]
     ]
     await event.edit(msg, buttons=btns)
 
@@ -178,10 +178,10 @@ def register_buy(bot):
         p = e.pattern_match
         await show_countries(e, p.group(1).decode(), int(p.group(2).decode()))
 
-    @bot.on(events.CallbackQuery(pattern=r"^by\|single\|(.+)\|(\d+)\|(\d+)$"))
+    @bot.on(events.CallbackQuery(pattern=r"^by\|(.+)\|(.+)\|(\d+)\|(\d+)$"))
     async def cb_by_single(e):
         p = e.pattern_match
-        await confirm_purchase(e, p.group(1).decode(), p.group(2).decode(), p.group(3).decode())
+        await confirm_purchase(e, p.group(2).decode(), p.group(3).decode(), p.group(4).decode())
         
     @bot.on(events.CallbackQuery(pattern=r"^buy_cf\|(.+)\|(\d+)\|(\d+)$"))
     async def cb_buy_cf(e):
