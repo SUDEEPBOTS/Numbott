@@ -2,6 +2,7 @@ import os
 import re
 import html
 import urllib.parse
+import io
 from telethon import events, Button
 from telethon.errors import MessageNotModifiedError
 from database import cur, db, get_usdt_rate, update_balance, to_usd
@@ -112,7 +113,9 @@ def register_deposit(bot):
                         async with session.get(qr_url) as resp:
                             if resp.status == 200:
                                 qr_bytes = await resp.read()
-                                await bot.send_file(uid, qr_bytes, caption=msg, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
+                                qr_file = io.BytesIO(qr_bytes)
+                                qr_file.name = "upi_qr.png"
+                                await bot.send_file(uid, qr_file, caption=msg, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
                             else:
                                 await bot.send_message(uid, msg, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
                 except Exception as e: 
