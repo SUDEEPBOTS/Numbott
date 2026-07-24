@@ -102,22 +102,22 @@ def register_deposit(bot):
                 except Exception: await bot.send_message(uid, msg + f"\n\n🔗 QR Link: {CWALLET_QR}", buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
             elif method == "UPI":
                 upi_url = f"upi://pay?pa={UPI_ID}&am={amt}"
-                encoded_upi = urllib.parse.quote(upi_url)
-                qr_url = f"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl={encoded_upi}"
                 msg = (f"<blockquote>{P_UPI} <b>𝐌ᴇᴛʜᴏᴅ:</b> UPI\n\n🆔 <b>UPI ID:</b>\n<code>{UPI_ID}</code></blockquote>\n"
                        f"{rate_text}\n"
                        f"<blockquote>👉 <b>𝐒ᴇɴᴅ 𝐏ʀᴏᴏғ:</b>\n𝐏ʟᴇᴀsᴇ sᴇɴᴅ ᴀ ᴄʟᴇᴀʀ 𝐒ᴄʀᴇᴇɴsʜᴏᴛ ᴏғ ᴛʜᴇ ᴘᴀʏᴍᴇɴᴛ ɴᴏᴡ.</blockquote>")
                 try: 
-                    import aiohttp
-                    async with aiohttp.ClientSession() as session:
-                        async with session.get(qr_url) as resp:
-                            if resp.status == 200:
-                                qr_bytes = await resp.read()
-                                qr_file = io.BytesIO(qr_bytes)
-                                qr_file.name = "upi_qr.png"
-                                await bot.send_file(uid, qr_file, caption=msg, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
-                            else:
-                                await bot.send_message(uid, msg, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
+                    import qrcode
+                    qr = qrcode.QRCode(version=1, box_size=10, border=4)
+                    qr.add_data(upi_url)
+                    qr.make(fit=True)
+                    img = qr.make_image(fill_color="black", back_color="white")
+                    
+                    qr_file = io.BytesIO()
+                    qr_file.name = "upi_qr.png"
+                    img.save(qr_file, "PNG")
+                    qr_file.seek(0)
+                    
+                    await bot.send_file(uid, qr_file, caption=msg, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
                 except Exception as e: 
                     logger.error(f"Failed to send UPI QR: {e}")
                     await bot.send_message(uid, msg, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
