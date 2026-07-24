@@ -55,10 +55,20 @@ def register_start(bot):
             PFP_URL = "assets/image.jpg"
             is_joined = await check_channel_joined(bot, uid, is_admin)
             if not is_joined:
-                msg = f"<blockquote>{PE_FLOWER} <b>𝐘ᴏᴜ ᴍᴜsᴛ ᴊᴏɪɴ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs ғɪʀsᴛ!</b></blockquote>\n<blockquote>{PE_LOCATION} 𝐉ᴏɪɴ ᴀʟʟ ʀᴇǫᴜɪʀᴇᴅ ᴄʜᴀɴɴᴇʟs ᴀɴᴅ ᴛʜᴇɴ ᴛᴀᴘ <b>𝐕ᴇʀɪғʏ 𝐉ᴏɪɴᴇᴅ</b>.</blockquote>"
+                from utils.helpers import get_unjoined_channels
+                from telethon import Button
+                from utils.keyboards import style_btn
+                
+                unjoined = await get_unjoined_channels(bot, uid)
+                remaining = len(unjoined)
+                msg = f"<blockquote>{PE_FLOWER} <b>𝐘ᴏᴜ ᴍᴜsᴛ ᴊᴏɪɴ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs ғɪʀsᴛ!</b></blockquote>\n<blockquote>{PE_LOCATION} {remaining} ᴄʜᴀɴɴᴇʟ(s) ʀᴇᴍᴀɪɴɪɴɢ. 𝐉ᴏɪɴ ᴀɴᴅ ᴛᴀᴘ <b>𝐕ᴇʀɪғʏ 𝐉ᴏɪɴᴇᴅ</b>.</blockquote>"
+                
+                buttons = [[Button.url(f"📢 Join Channel {idx}", url)] for url, idx in unjoined]
+                buttons.append([style_btn("𝐕ᴇʀɪғʏ 𝐉ᴏɪɴᴇᴅ", b"verify_join", "success", icon=6129627894349045589)])
+                
                 f = await bot.upload_file(PFP_URL)
                 media = types.InputMediaUploadedPhoto(file=f, spoiler=True)
-                return await bot.send_file(e.chat_id, media, caption=msg, buttons=get_join_buttons())
+                return await bot.send_file(e.chat_id, media, caption=msg, buttons=buttons)
 
             row = cur.execute("SELECT terms_accepted FROM users WHERE user_id=?", (uid,)).fetchone()
             terms_acc = row[0] if row else 0
