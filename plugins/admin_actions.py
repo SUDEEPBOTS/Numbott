@@ -7,7 +7,7 @@ import zipfile
 import shutil
 import html
 from telethon import events, Button, TelegramClient
-from telethon.errors import SessionPasswordNeededError
+from telethon.errors import SessionPasswordNeededError, FloodWaitError, UserIsBlockedError, InputUserDeactivatedError
 from telethon.tl.functions.account import GetPasswordRequest
 from database import cur, db, is_admin, has_perm, ADMIN_ID, get_usdt_rate, COUNTRY_CODES, get_flag_by_country_name, get_country_info, update_balance, is_bot_online
 from config import *
@@ -466,14 +466,28 @@ async def admin_actions(event):
                 btns = [[Button.url(btn_name, url)]] if url else None
                 users = cur.execute("SELECT user_id FROM users").fetchall()
                 s, f = 0, 0
-                await conv.send_message(f"{P_TG} Broadcasting...")
-                for (u_id,) in users:
+                total = len(users)
+                status_msg = await conv.send_message(f"{P_TG} Broadcasting to {total} users...")
+                for idx, (u_id,) in enumerate(users):
                     try: 
                         await bot.send_message(int(u_id), txt, buttons=btns, parse_mode='html')
                         s += 1
-                    except: f += 1
-                    await asyncio.sleep(0.1) 
-                await conv.send_message(f"{P_YES} Done! Sent: {s} | Failed: {f}")
+                    except FloodWaitError as e:
+                        await asyncio.sleep(e.seconds + 1)
+                        try:
+                            await bot.send_message(int(u_id), txt, buttons=btns, parse_mode='html')
+                            s += 1
+                        except Exception:
+                            f += 1
+                    except (UserIsBlockedError, InputUserDeactivatedError):
+                        f += 1
+                    except Exception:
+                        f += 1
+                    if (idx + 1) % 50 == 0:
+                        try: await status_msg.edit(f"{P_TG} Broadcasting... {idx+1}/{total} (✅ {s} | ❌ {f})")
+                        except: pass
+                    await asyncio.sleep(0.05) 
+                await conv.send_message(f"{P_YES} Done! Sent: {s} | Failed: {f} | Total: {total}")
 
             elif action_data == "bal" and has_perm(uid, 'p_bal'):
                 t_uid = int((await get_reply(f"{P_ACC} <b>User ID:</b>")).text)

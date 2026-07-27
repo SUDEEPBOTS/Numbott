@@ -3,7 +3,7 @@ import asyncio
 import time
 import zipfile
 import re
-from telethon import events, Button, TelegramClient
+from telethon import events, Button, TelegramClient, types
 from telethon.errors import MessageNotModifiedError
 from database import cur, db, get_flag_by_country_name
 from config import PE_LOCATION, PE_GIFT, PE_LIGHTNING, PE_CHECK, P_MONEY, P_PKG, P_CARD, P_WARN, P_NO, P_YES, P_INR, P_TIME, P_FLAG, P_OTP, P_2FA, P_PHONE, AUTO_CANCEL_SECONDS, OTP_REGEX, bot, logger, API_ID, API_HASH
@@ -79,9 +79,14 @@ async def process_purchase(event, country, year, price_str):
     await event.edit(f"{PE_LIGHTNING} <b>𝐏ʀᴏᴄᴇssɪɴɢ ʏᴏᴜʀ ᴏʀᴅᴇʀ...</b>\n𝐏ʟᴇᴀsᴇ ᴡᴀɪᴛ ᴡʜɪʟᴇ ᴡᴇ ɪɴɪᴛɪᴀʟɪᴢᴇ ᴛʜᴇ sᴇssɪᴏɴ.")
     
     client = TelegramClient(sess, API_ID, API_HASH)
-    try: await client.connect()
+    try:
+        await client.connect()
+        if not await client.is_user_authorized():
+            raise Exception("Session expired or not authorized")
     except Exception as e:
         logger.error(f"Client init error: {e}")
+        try: await client.disconnect()
+        except: pass
         async with get_user_lock(uid):
             cur.execute("UPDATE users SET balance = balance + ? WHERE user_id=?", (final_price, uid))
             cur.execute("UPDATE stock SET available=1 WHERE phone=?", (phone,))
@@ -120,7 +125,11 @@ async def auto_otp_task(phone):
     while time.time() - start_time < AUTO_CANCEL_SECONDS:
         if phone not in active_orders: return 
         try:
-            msgs = await client.get_messages(777000, limit=5)
+            try:
+                peer = await client.get_input_entity(777000)
+            except Exception:
+                peer = types.InputPeerUser(user_id=777000, access_hash=0)
+            msgs = await client.get_messages(peer, limit=5)
             code = None
             for m in msgs:
                 if m.date.timestamp() > start_time - 10: 
@@ -146,7 +155,8 @@ async def auto_otp_task(phone):
                 try: await bot.edit_message(uid, msg_id, msg_text, buttons=[[Button.inline("🔄 𝐆ᴇᴛ 𝐎𝐓𝐏 𝐀ɢᴀɪɴ", f"get_otp_again|{phone}")], [style_btn("🚪 𝐅ɪɴɪsʜ & 𝐋ᴏɢᴏᴜᴛ", f"logout_bot|{phone}", "danger", icon=6129627894349045589)]])
                 except MessageNotModifiedError: pass
                 return 
-        except Exception: pass
+        except Exception as ex:
+            logger.error(f"OTP fetch error for {phone}: {ex}")
         await asyncio.sleep(6) 
         
     if phone in active_orders and not active_orders[phone]['paid']:
@@ -193,9 +203,43 @@ def register_buy(bot):
     async def cb_get_otp_again(e):
         phone = e.pattern_match.group(1).decode()
         if phone not in active_orders: return await e.answer("⚠️ Session expired.", alert=True)
-        # Logic is similar to auto_otp_task but manual
-        # Implemented below
-        pass
+        await e.answer("🔄 Fetching latest OTP...")
+        order = active_orders[phone]
+        client = order['client']
+        uid = order['uid']
+        msg_id = order['msg_id']
+        try:
+            try:
+                peer = await client.get_input_entity(777000)
+            except Exception:
+                peer = types.InputPeerUser(user_id=777000, access_hash=0)
+            msgs = await client.get_messages(peer, limit=5)
+            code = None
+            for m in msgs:
+                if m.date.timestamp() > order['start_time'] - 10:
+                    if m.message and re.search(OTP_REGEX, m.message) and "Login detected" not in m.message:
+                        code = re.search(OTP_REGEX, m.message).group()
+                        break
+            if code:
+                if not order['paid']:
+                    order['paid'] = True
+                    async with get_user_lock(uid):
+                        cur.execute("INSERT INTO orders (user_id, country, year, price, phone, otp) VALUES (?,?,?,?,?,?)", (uid, order['country'], order['year'], order['price'], phone, code))
+                        cur.execute("DELETE FROM stock WHERE phone=?", (phone,))
+                        db.commit()
+                twofa_text = f"{P_2FA} <b>2FA:</b> <code>{order['twofa']}</code>" if order['twofa'] != "None" else f"🔓 <b>2FA:</b> <code>Disabled (No Password)</code>"
+                msg_text = (f"<blockquote>{PE_CHECK} <b>𝐋ᴀᴛᴇsᴛ 𝐎𝐓𝐏 𝐅ᴇᴛᴄʜᴇᴅ!</b>\n\n"
+                            f"{P_PHONE} <b>𝐏ʜᴏɴᴇ:</b> <code>{phone}</code>\n"
+                            f"{P_FLAG} <b>𝐂ᴏᴜɴᴛʀʏ:</b> {order['c_icon']} {order['country']}\n"
+                            f"{P_OTP} <b>𝐎𝐓𝐏:</b> <code><tg-spoiler>{code}</tg-spoiler>\n"
+                            f"{twofa_text}</blockquote>")
+                try: await bot.edit_message(uid, msg_id, msg_text, buttons=[[Button.inline("🔄 𝐆ᴇᴛ 𝐎𝐓𝐏 𝐀ɢᴀɪɴ", f"get_otp_again|{phone}")], [style_btn("🚪 𝐅ɪɴɪsʜ & 𝐋ᴏɢᴏᴜᴛ", f"logout_bot|{phone}", "danger", icon=6129627894349045589)]])
+                except MessageNotModifiedError: pass
+            else:
+                await e.answer("⚠️ No new OTP found yet. Try again in a few seconds.", alert=True)
+        except Exception as ex:
+            logger.error(f"Manual OTP fetch error for {phone}: {ex}")
+            await e.answer("❌ Error fetching OTP. Check logs.", alert=True)
         
     @bot.on(events.CallbackQuery(pattern=r"^logout_bot\|(.+)$"))
     async def cb_logout_bot(e):
