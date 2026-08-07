@@ -89,9 +89,9 @@ async def process_purchase(event, country, year, price_str):
         except: pass
         async with get_user_lock(uid):
             cur.execute("UPDATE users SET balance = balance + ? WHERE user_id=?", (final_price, uid))
-            cur.execute("UPDATE stock SET available=1 WHERE phone=?", (phone,))
+            cur.execute("DELETE FROM stock WHERE phone=?", (phone,))
             db.commit()
-        return await event.edit(f"{P_NO} <b>Error initializing account.</b> Money refunded.")
+        return await event.edit(f"{P_NO} <b>Error initializing account. (Session Dead)</b> Money refunded.")
 
     c_icon = get_flag_by_country_name(country)
     actual_year = int(year)
@@ -144,6 +144,13 @@ async def auto_otp_task(phone):
                         cur.execute("INSERT INTO orders (user_id, country, year, price, phone, otp) VALUES (?,?,?,?,?,?)", (uid, order['country'], order['year'], order['price'], phone, code))
                         cur.execute("DELETE FROM stock WHERE phone=?", (phone,))
                         db.commit()
+                        
+                        from config import LOG_CHANNELS, P_YES
+                        for log_ch in LOG_CHANNELS:
+                            try:
+                                await bot.send_message(log_ch, f"{P_YES} <b>ACCOUNT SOLD</b>\n\n👤 <b>User:</b> <code>{uid}</code>\n📱 <b>Phone:</b> <code>{phone}</code>\n💰 <b>Price:</b> ₹{order['price']}\n🌍 <b>Country:</b> {order['country']}")
+                            except Exception as log_ex:
+                                logger.error(f"Failed to log sale to {log_ch}: {log_ex}")
                 
                 twofa_text = f"{P_2FA} <b>2FA:</b> <code>{order['twofa']}</code>" if order['twofa'] != "None" else f"🔓 <b>2FA:</b> <code>Disabled (No Password)</code>"
                 msg_text = (f"<blockquote>{PE_CHECK} <b>𝐋ᴀᴛᴇsᴛ 𝐎𝐓𝐏 𝐅ᴇᴛᴄʜᴇᴅ!</b>\n\n"

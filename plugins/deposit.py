@@ -150,6 +150,8 @@ def register_deposit(bot):
                 [style_btn("𝐂ᴜsᴛᴏᴍ 𝐀ᴍᴏᴜɴᴛ", f"dep_acc|{dep_id}|{uid}|{info['method']}|custom|0", "primary", icon=5409098988156629257)]]
         
         try:
+            if not LOG_CHANNELS:
+                raise ValueError("No log channels")
             for log_ch in LOG_CHANNELS:
                 try:
                     if e.photo: await bot.send_message(log_ch, cap, file=e.media, buttons=btns)

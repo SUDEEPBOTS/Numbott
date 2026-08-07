@@ -31,7 +31,7 @@ async def admin_panel_handler(event):
 
     r2 = []
     if uid == ADMIN_ID or has_perm(uid, 'p_manage_stock'):
-        r2.extend([style_btn("Manage Stock", "adm_managestock", "success", icon=6129731974291527294), style_btn("Auto Price", "adm_autoprice", "primary", icon=5409098988156629257)])
+        r2.extend([style_btn("Manage Stock", "adm_managestock", "success", icon=6129731974291527294), style_btn("Check Stock", "adm_checkstock", "primary", icon=5409098988156629257), style_btn("Auto Price", "adm_autoprice", "primary", icon=5409098988156629257)])
     if r2: btns.append(r2)
 
     r3 = []

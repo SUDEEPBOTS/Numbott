@@ -15,6 +15,36 @@ from utils.keyboards import style_btn
 from utils.states import admin_state
 from plugins.admin import admin_panel_handler
 
+async def run_stock_check(event):
+    msg = await event.respond("🔄 <b>Checking Stock...</b>\nPlease wait, this may take a while.", parse_mode="html")
+    stock_items = cur.execute("SELECT phone, session_file FROM stock WHERE available=1").fetchall()
+    total = len(stock_items)
+    if total == 0:
+        return await msg.edit("⚠️ <b>No stock to check.</b>", parse_mode="html")
+    
+    dead = 0
+    alive = 0
+    for idx, (phone, sess) in enumerate(stock_items):
+        try:
+            client = TelegramClient(sess, API_ID, API_HASH)
+            await client.connect()
+            if not await client.is_user_authorized():
+                raise Exception("Dead")
+            alive += 1
+        except Exception:
+            dead += 1
+            cur.execute("DELETE FROM stock WHERE phone=?", (phone,))
+            db.commit()
+        finally:
+            try: await client.disconnect()
+            except: pass
+        
+        if (idx + 1) % 5 == 0:
+            try: await msg.edit(f"🔄 <b>Checking Stock...</b> {idx+1}/{total}\n✅ Alive: {alive}\n❌ Dead: {dead}", parse_mode="html")
+            except: pass
+            
+    await msg.edit(f"✅ <b>Stock Check Complete!</b>\n\nTotal Checked: {total}\n✅ Alive: {alive}\n❌ Dead (Removed): {dead}", parse_mode="html")
+
 async def detect_account_year(client):
     """Detect account creation year from earliest dialog/message."""
     try:
@@ -191,6 +221,10 @@ async def admin_actions(event):
         return await manage_admins_menu(event)
 
     elif action_data == "managestock" and has_perm(uid, 'p_manage_stock'): return await send_manage_stock_page(event, 1)
+    elif action_data == "checkstock" and has_perm(uid, 'p_manage_stock'):
+        await event.answer("Checking stock started...", alert=False)
+        bot.loop.create_task(run_stock_check(event))
+        return
     elif action_data.startswith("mspg|") and has_perm(uid, 'p_manage_stock'): return await send_manage_stock_page(event, int(action_data.split("|")[1]))
     elif action_data.startswith("msc|") and has_perm(uid, 'p_manage_stock'): return await send_manage_stock_country(event, action_data.split("|")[1])
     elif action_data == "autoprice" and has_perm(uid, 'p_manage_stock'): return await send_autoprice_page(event, 1)
@@ -414,7 +448,22 @@ async def admin_actions(event):
                 sp = f"sessions/{phone}"
                 client = TelegramClient(sp, API_ID, API_HASH)
                 await client.connect()
-                sreq = await client.send_code_request(phone)
+                try:
+                    sreq = await client.send_code_request(phone)
+                except FloodWaitError as e:
+                    wait_mins = e.seconds // 60
+                    wait_hrs = wait_mins // 60
+                    if wait_hrs > 0:
+                        time_str = f"{wait_hrs}h {wait_mins % 60}m"
+                    else:
+                        time_str = f"{wait_mins}m"
+                    await conv.send_message(f"⏳ <b>FloodWait!</b> Telegram rate-limited.\n\n<b>Wait:</b> {time_str}\n<i>Too many OTP requests. Try again later.</i>")
+                    await client.disconnect()
+                    return
+                except Exception as e:
+                    await conv.send_message(f"❌ <b>Error:</b> {e}\n<i>Failed to request code. This number might be rate-limited or banned.</i>")
+                    await client.disconnect()
+                    return
                 
                 twofa_pass = "None"
                 try: 
