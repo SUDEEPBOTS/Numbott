@@ -19,7 +19,7 @@ async def send_main_menu(bot, event, uid):
            f"<blockquote>{P_GIFT} <b>𝐑ᴇғᴇʀ & 𝐄ᴀʀɴ:</b>\n𝐈ɴᴠɪᴛᴇ ғʀɪᴇɴᴅs ᴀɴᴅ ᴇᴀʀɴ {pct}% ᴏғ ᴛʜᴇɪʀ ᴅᴇᴘᴏsɪᴛs!\n"
            f"{P_GLOBE} <code>https://t.me/{bot_username}?start=ref_{uid}</code></blockquote>\n\n"
            f"<blockquote>💰 <b>𝐁ᴀʟᴀɴᴄᴇ:</b> {P_INR}{bal}</blockquote>\n\n"
-           f"<blockquote>👨‍💻 <b>𝐃ᴇᴠᴇʟᴏᴘᴇʀ:</b> <a href='https://t.me/I_VIP_RADHE_II'>𝐌꧊᱂ 𝁛 ꪜᛧƖƖ𝛂ᛧ𝝶</a></blockquote>")
+           f"<blockquote>👨‍💻 <b>𝐃ᴇᴠᴇʟᴏᴘᴇʀ:</b> <a href='https://t.me/sivamXpruff'>𝁘𝐌꧊᱂ 𝁛 ꪜᛧƖƖ𝛂ᛧ𝝶 𝁤𝁛𝁑𝆆𝆅🌾.</a></blockquote>")
     
     f = await bot.upload_file(PFP_URL)
     media = types.InputMediaUploadedPhoto(file=f)
@@ -61,9 +61,12 @@ def register_start(bot):
                 
                 unjoined = await get_unjoined_channels(bot, uid)
                 remaining = len(unjoined)
-                msg = f"<blockquote>{PE_FLOWER} <b>𝐘ᴏᴜ ᴍᴜsᴛ ᴊᴏɪɴ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs ғɪʀsᴛ!</b></blockquote>\n<blockquote>{PE_LOCATION} {remaining} ᴄʜᴀɴɴᴇʟ(s) ʀᴇᴍᴀɪɴɪɴɢ. 𝐉ᴏɪɴ ᴀɴᴅ ᴛᴀᴘ <b>𝐕ᴇʀɪғʏ 𝐉ᴏɪɴᴇᴅ</b>.</blockquote>"
+                msg = f"<blockquote>{PE_FLOWER} <b>𝐘ᴏᴜ ᴍᴜsᴛ ᴊᴏɪɴ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs & ɢʀᴏᴜᴘ ғɪʀsᴛ!</b></blockquote>\n<blockquote>{PE_LOCATION} {remaining} ᴄʜᴀɴɴᴇʟ(s)/ɢʀᴏᴜᴘ(s) ʀᴇᴍᴀɪɴɪɴɢ. 𝐉ᴏɪɴ ᴀɴᴅ ᴛᴀᴘ <b>𝐕ᴇʀɪғʏ 𝐉ᴏɪɴᴇᴅ</b>.</blockquote>"
                 
-                buttons = [[Button.url(f"📢 Join Channel {idx}", url)] for url, idx in unjoined]
+                buttons = []
+                for url, idx in unjoined:
+                    btn_label = "💬 𝐉ᴏɪɴ 𝐆ʀᴏᴜᴘ" if ("+" in url or "joinchat" in url or idx == 2) else "📢 𝐉ᴏɪɴ 𝐂ʜᴀɴɴᴇʟ"
+                    buttons.append([Button.url(btn_label, url)])
                 buttons.append([style_btn("𝐕ᴇʀɪғʏ 𝐉ᴏɪɴᴇᴅ", b"verify_join", "success", icon=6129627894349045589)])
                 
                 f = await bot.upload_file(PFP_URL)
