@@ -75,6 +75,60 @@ def get_country_from_lzt(code):
     if not code: return "Unknown"
     return LZT_TO_COUNTRY.get(code.lower(), code.upper())
 
+DC_IPS = {
+    1: '149.154.175.50',
+    2: '149.154.167.51',
+    3: '149.154.175.100',
+    4: '149.154.167.91',
+    5: '91.108.56.130'
+}
+
+def extract_telethon_string_session(item_dict):
+    """Robustly extracts Telethon StringSession from any LZT item representation."""
+    if not isinstance(item_dict, dict):
+        return None
+    try:
+        import struct, socket, base64
+        login_data = item_dict.get('loginData') or {}
+        raw = login_data.get('raw') or item_dict.get('raw') or ''
+        auth_key_hex = None
+        dc_id = None
+        
+        # Method 1: from loginData['login'] (512-hex auth key) and password/telegram_dc_id
+        login_val = str(login_data.get('login') or '').strip()
+        if len(login_val) == 512:
+            auth_key_hex = login_val
+            dc_val = login_data.get('password') or item_dict.get('telegram_dc_id') or 2
+            try: dc_id = int(str(dc_val).strip())
+            except: dc_id = 2
+            
+        # Method 2: from raw string if login wasn't 512 hex
+        if not auth_key_hex and raw:
+            raw_clean = raw.replace('%3A', ':')
+            if ':' in raw_clean:
+                k_hex, d_str = raw_clean.split(':', 1)
+                if len(k_hex.strip()) == 512:
+                    auth_key_hex = k_hex.strip()
+                    try: dc_id = int(d_str.strip())
+                    except: dc_id = 2
+                    
+        if not auth_key_hex:
+            return None
+            
+        auth_key_bytes = bytes.fromhex(auth_key_hex)
+        ip_str = DC_IPS.get(dc_id, '149.154.167.51')
+        ip_bytes = socket.inet_aton(ip_str)
+        port = 443
+        packed = struct.pack('>B4sH', dc_id, ip_bytes, port) + auth_key_bytes
+        return '1' + base64.urlsafe_b64encode(packed).decode('ascii')
+    except Exception as e:
+        logger.error(f"Error extracting telethon session: {e}")
+        return None
+
+def lzt_raw_to_string_session(raw_str):
+    """Convert LZT auth key string (hex:dc_id) into a valid Telethon StringSession."""
+    return extract_telethon_string_session({'raw': raw_str})
+
 class LZTClient:
     def __init__(self):
         pass
@@ -250,60 +304,6 @@ class LZTClient:
         except Exception as e:
             logger.error(f"LZT search items error for {country_name}: {e}")
         return []
-
-DC_IPS = {
-    1: '149.154.175.50',
-    2: '149.154.167.51',
-    3: '149.154.175.100',
-    4: '149.154.167.91',
-    5: '91.108.56.130'
-}
-
-def extract_telethon_string_session(item_dict):
-    """Robustly extracts Telethon StringSession from any LZT item representation."""
-    if not isinstance(item_dict, dict):
-        return None
-    try:
-        import struct, socket, base64
-        login_data = item_dict.get('loginData') or {}
-        raw = login_data.get('raw') or item_dict.get('raw') or ''
-        auth_key_hex = None
-        dc_id = None
-        
-        # Method 1: from loginData['login'] (512-hex auth key) and password/telegram_dc_id
-        login_val = str(login_data.get('login') or '').strip()
-        if len(login_val) == 512:
-            auth_key_hex = login_val
-            dc_val = login_data.get('password') or item_dict.get('telegram_dc_id') or 2
-            try: dc_id = int(str(dc_val).strip())
-            except: dc_id = 2
-            
-        # Method 2: from raw string if login wasn't 512 hex
-        if not auth_key_hex and raw:
-            raw_clean = raw.replace('%3A', ':')
-            if ':' in raw_clean:
-                k_hex, d_str = raw_clean.split(':', 1)
-                if len(k_hex.strip()) == 512:
-                    auth_key_hex = k_hex.strip()
-                    try: dc_id = int(d_str.strip())
-                    except: dc_id = 2
-                    
-        if not auth_key_hex:
-            return None
-            
-        auth_key_bytes = bytes.fromhex(auth_key_hex)
-        ip_str = DC_IPS.get(dc_id, '149.154.167.51')
-        ip_bytes = socket.inet_aton(ip_str)
-        port = 443
-        packed = struct.pack('>B4sH', dc_id, ip_bytes, port) + auth_key_bytes
-        return '1' + base64.urlsafe_b64encode(packed).decode('ascii')
-    except Exception as e:
-        logger.error(f"Error extracting telethon session: {e}")
-        return None
-
-def lzt_raw_to_string_session(raw_str):
-    """Convert LZT auth key string (hex:dc_id) into a valid Telethon StringSession."""
-    return extract_telethon_string_session({'raw': raw_str})
 
     async def fast_buy(self, item_id, price_str, balance_id=None):
         """Perform fast-buy for an item on LZT with balance_id."""
