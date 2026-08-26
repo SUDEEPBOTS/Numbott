@@ -58,11 +58,41 @@ YEAR_BADGES = {
     2019: "⚡ 2019 & Older (Vintage)"
 }
 
+search_state = {}
+
+async def search_countries_matching(query):
+    import html
+    from database import COUNTRY_CODES, get_flag_by_country_name
+    from utils.lzt import get_lzt_code
+    query_clean = query.strip().lower()
+    dial_code = re.sub(r'[^\d]', '', query_clean)
+    all_countries = await get_countries_list()
+    
+    matches = []
+    for c_name, count in all_countries:
+        if query_clean in c_name.lower():
+            matches.append((c_name, count))
+            continue
+        if dial_code:
+            for code, (name, _) in COUNTRY_CODES.items():
+                if name == c_name and dial_code == code:
+                    matches.append((c_name, count))
+                    break
+            if (c_name, count) in matches:
+                continue
+        lzt_code = get_lzt_code(c_name)
+        if lzt_code and query_clean == lzt_code.lower():
+            matches.append((c_name, count))
+            continue
+    return matches
+
 async def show_buy_menu(event):
     msg = (f"<blockquote>{PE_GIFT} <b>𝐒ᴇʟᴇᴄᴛ 𝐀ᴄᴄᴏᴜɴᴛ 𝐂ᴀᴛᴇɢᴏʀʏ:</b>\n\n"
+           f"🔍 <b>𝐒ᴇᴀʀᴄʜ 𝐂ᴏᴜɴᴛʀʏ:</b> 𝐐ᴜɪᴄᴋ ʟᴏᴏᴋᴜᴘ ʙʏ ɴᴀᴍᴇ ᴏʀ ᴅɪᴀʟ ᴄᴏᴅᴇ (+91, +55...)\n"
            f"🌍 <b>𝐀ʟʟ 𝐂ᴏᴜɴᴛʀɪᴇs:</b> 𝐁ʀᴏᴡsᴇ 50+ ᴄᴏᴜɴᴛʀɪᴇs sᴛᴏᴄᴋ (𝐅ʀᴇsʜ & 𝐀ʟʟ).\n"
            f"🏛️ <b>𝐎ʟᴅ / 𝐀ɢᴇᴅ 𝐀ᴄᴄᴏᴜɴᴛs:</b> 𝐅ɪʟᴛᴇʀ ʙʏ 𝐒ᴘᴇᴄɪғɪᴄ 𝐘ᴇᴀʀ (2025, 2024, 2023, 2022, 2021...).</blockquote>")
     btns = [
+        [style_btn("🔍 𝐒ᴇᴀʀᴄʜ 𝐂ᴏᴜɴᴛʀʏ", b"search_country_btn", "primary", icon=5409098988156629257)],
         [style_btn("🌍 𝐀ʟʟ 𝐂ᴏᴜɴᴛʀɪᴇs (𝐅ʀᴇsʜ & 𝐀ʟʟ)", b"pg_c|bulk|1", "primary", icon=6154249597532248059)],
         [style_btn("🏛️ 𝐎ʟᴅ / 𝐀ɢᴇᴅ 𝐀ᴄᴄᴏᴜɴᴛs (ʙʏ 𝐘ᴇᴀʀ)", b"by_years_menu", "success", icon=5408995930416362034)]
     ]
@@ -139,6 +169,7 @@ async def show_countries(event, mode, page):
     
     nav = []
     if page > 1: nav.append(style_btn("⬅️ 𝐏ʀᴇᴠ", f"pg_c|{mode}|{page-1}", "primary", icon=6129627894349045589))
+    nav.append(style_btn("🔍 𝐒ᴇᴀʀᴄʜ", b"search_country_btn", "primary", icon=5409098988156629257))
     if offset + limit < total: nav.append(style_btn("𝐍ᴇxᴛ ➡️", f"pg_c|{mode}|{page+1}", "primary", icon=6129732880529628243))
     if nav: f_btns.append(nav)
     
@@ -594,3 +625,47 @@ def register_buy(bot):
             await e.edit(msg, buttons=[[style_btn("🛒 𝐁ᴜʏ 𝐀ɴᴏᴛʜᴇʀ 𝐀ᴄᴄᴏᴜɴᴛ", "buy_menu_main", "primary", icon=5408995930416362034)]])
         else:
             await e.answer("✅ Order already completed.", alert=True)
+
+    @bot.on(events.CallbackQuery(pattern=b"^search_country_btn$"))
+    async def cb_search_country_btn(e):
+        uid = e.sender_id
+        search_state[uid] = True
+        msg = (f"<blockquote>🔍 <b>𝐒ᴇᴀʀᴄʜ 𝐂ᴏᴜɴᴛʀʏ:</b>\n\n"
+               f"𝐏ʟᴇᴀsᴇ ᴛʏᴘᴇ ᴛʜᴇ <b>𝐂ᴏᴜɴᴛʀʏ 𝐍ᴀᴍᴇ</b> (ᴇ.ɢ. <i>India, Brazil, Russia, France</i>) ᴏʀ <b>𝐃ɪᴀʟɪɴɢ 𝐂ᴏᴅᴇ</b> (ᴇ.ɢ. <i>+91, +55, +7</i>) ʙᴇʟᴏᴡ:</blockquote>")
+        btns = [[style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐌ᴇɴᴜ", b"buy_menu_main", "danger", icon=6129812419028982717)]]
+        try: await e.edit(msg, buttons=btns)
+        except MessageNotModifiedError: pass
+
+    @bot.on(events.NewMessage(func=lambda e: e.sender_id in search_state and not e.text.startswith('/')))
+    async def msg_search_country(e):
+        import html
+        uid = e.sender_id
+        search_state.pop(uid, None)
+        query = (e.text or "").strip()
+        if not query: return
+        
+        matches = await search_countries_matching(query)
+        if matches:
+            btns = []
+            for c_name, count in matches[:12]:
+                flag = get_flag_by_country_name(c_name)
+                cnt_str = f"({count})" if count else "(40+)"
+                btns.append(style_btn(f"{flag} {c_name} {cnt_str}", f"bc|bulk|{c_name}", "primary", icon=6154249597532248059))
+            
+            f_btns = [btns[i:i+2] for i in range(0, len(btns), 2)]
+            f_btns.append([
+                style_btn("🔍 𝐒ᴇᴀʀᴄʜ 𝐀ɢᴀɪɴ", b"search_country_btn", "primary", icon=5409098988156629257),
+                style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐌ᴇɴᴜ", b"buy_menu_main", "danger", icon=6129812419028982717)
+            ])
+            msg = (f"<blockquote>🔍 <b>𝐒ᴇᴀʀᴄʜ 𝐑ᴇsᴜʟᴛs ғᴏʀ:</b> <code>{html.escape(query)}</code>\n\n"
+                   f"𝐅ᴏᴜɴᴅ <b>{len(matches)}</b> ᴍᴀᴛᴄʜɪɴɢ ᴄᴏᴜɴᴛʀɪᴇs:</blockquote>")
+            await e.reply(msg, buttons=f_btns)
+        else:
+            f_btns = [
+                [style_btn("🔍 𝐒ᴇᴀʀᴄʜ 𝐀ɢᴀɪɴ", b"search_country_btn", "primary", icon=5409098988156629257)],
+                [style_btn("🌍 𝐀ʟʟ 𝐂ᴏᴜɴᴛʀɪᴇs", b"pg_c|bulk|1", "primary", icon=6154249597532248059)],
+                [style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐌ᴇɴᴜ", b"buy_menu_main", "danger", icon=6129812419028982717)]
+            ]
+            msg = (f"<blockquote>❌ <b>𝐍ᴏ ᴄᴏᴜɴᴛʀɪᴇs ғᴏᴜɴᴅ ᴍᴀᴛᴄʜɪɴɢ:</b> <code>{html.escape(query)}</code>\n\n"
+                   f"𝐏ʟᴇᴀsᴇ ᴄʜᴇᴄᴋ ᴛʜᴇ sᴘᴇʟʟɪɴɢ ᴏʀ ʙʀᴏᴡsᴇ <b>𝐀ʟʟ 𝐂ᴏᴜɴᴛʀɪᴇs</b>.</blockquote>")
+            await e.reply(msg, buttons=f_btns)
