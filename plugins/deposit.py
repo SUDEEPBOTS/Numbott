@@ -143,7 +143,14 @@ def register_deposit(bot):
                         except: await e.reply(cap, buttons=btns)
                     else: await e.reply(cap, buttons=btns)
                 else: await e.reply(f"{P_CARD} <b>{method} Deposit</b>{rate_text}\n\n👇 Send Screenshot here:", buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
-        except ValueError: await e.respond(f"{P_NO} Please enter a valid number in {P_INR} (INR).")
+            raise events.StopPropagation
+        except ValueError: 
+            await e.respond(f"{P_NO} Please enter a valid number in {P_INR} (INR).")
+            raise events.StopPropagation
+        except events.StopPropagation:
+            raise
+        except Exception as e_amt:
+            logger.error(f"Error in msg_wait_amt: {e_amt}")
 
     @bot.on(events.NewMessage(func=lambda e: e.sender_id in waiting_proof and (e.photo or e.document or e.media or (e.text and not e.text.startswith('/')))))
     async def msg_wait_proof(e):
@@ -155,6 +162,9 @@ def register_deposit(bot):
         # 1. AUTO-UPI / IMAP UTR FLOW
         if info['method'] == "UPI" and e.text and not (e.photo or e.document or e.media):
             utr_input = re.sub(r'[^0-9A-Za-z]', '', e.text.strip())
+            if len(utr_input) < 6:
+                waiting_proof[uid] = info
+                return await e.reply(f"<blockquote>{P_WARN} <b>Invalid UTR!</b>\n\n𝐏ʟᴇᴀsᴇ ᴇɴᴛᴇʀ ʏᴏᴜʀ valid <b>12-ᴅɪɢɪᴛ 𝐔𝐓𝐑 / 𝐑ᴇғᴇʀᴇɴᴄᴇ 𝐍ᴏ.</b> (ᴏʀ 𝐓ʀᴀɴsᴀᴄᴛɪᴏɴ 𝐈𝐃).</blockquote>")
             
             # Anti-Duplicate UTR Check
             dup_check = cur.execute("SELECT id, user_id FROM deposits WHERE utr=? AND status='approved'", (utr_input,)).fetchone()
