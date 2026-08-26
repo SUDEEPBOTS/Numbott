@@ -13,6 +13,14 @@ def get_imap_credentials():
     pwd = r_pass[0] if r_pass and r_pass[0] else "dqwo agxp srsw fdax"
     return user, pwd
 
+# Strict whitelist of official FamPay / Payment provider domains
+OFFICIAL_SENDER_DOMAINS = [
+    "@famapp.in",
+    "@fampay.in",
+    "@famapp.co.in",
+    "no-reply@famapp.in"
+]
+
 def _sync_verify_utr(utr_query):
     email_user, email_pass = get_imap_credentials()
     if not email_user or not email_pass:
@@ -41,6 +49,13 @@ def _sync_verify_utr(utr_query):
             for part in msg_data:
                 if isinstance(part, tuple):
                     msg = email.message_from_bytes(part[1])
+                    
+                    # 1. STRICT SENDER AUTHENTICATION: Must be from official FamPay email!
+                    from_header = (msg.get("From") or "").lower()
+                    if not any(domain in from_header for domain in OFFICIAL_SENDER_DOMAINS):
+                        logger.warning(f"Ignored fake/unauthorized payment email from: {from_header}")
+                        continue
+
                     body = ""
                     if msg.is_multipart():
                         for p in msg.walk():
