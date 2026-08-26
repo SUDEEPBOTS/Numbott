@@ -101,10 +101,22 @@ def register_deposit(bot):
                 try: await bot.send_file(uid, CWALLET_QR, caption=msg, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
                 except Exception: await bot.send_message(uid, msg + f"\n\n🔗 QR Link: {CWALLET_QR}", buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
             elif method == "UPI":
-                upi_url = f"upi://pay?pa={UPI_ID}&am={amt}"
-                msg = (f"<blockquote>{P_UPI} <b>𝐌ᴇᴛʜᴏᴅ:</b> UPI\n\n🆔 <b>UPI ID:</b>\n<code>{UPI_ID}</code></blockquote>\n"
+                upi_res = cur.execute("SELECT value FROM settings WHERE key='upi_id'").fetchone()
+                active_upi = upi_res[0] if upi_res and upi_res[0] else UPI_ID
+                
+                dep_mode_res = cur.execute("SELECT value FROM settings WHERE key='deposit_mode'").fetchone()
+                dep_mode = dep_mode_res[0] if dep_mode_res and dep_mode_res[0] else "auto"
+                
+                upi_url = f"upi://pay?pa={active_upi}&am={amt}&cu=INR"
+                
+                if dep_mode in ("auto", "hybrid"):
+                    instruction = "👉 <b>𝐀ғᴛᴇʀ 𝐏ᴀʏɪɴɢ:</b>\n𝐏ʟᴇᴀsᴇ ᴇɴᴛᴇʀ ʏᴏᴜʀ <b>12-ᴅɪɢɪᴛ 𝐔𝐓𝐑 / 𝐑ᴇғ 𝐍ᴏ.</b> (ᴏʀ 𝐓ʀᴀɴsᴀᴄᴛɪᴏɴ 𝐈𝐃) ʙᴇʟᴏᴡ:"
+                else:
+                    instruction = "👉 <b>𝐒ᴇɴᴅ 𝐏ʀᴏᴏғ:</b>\n𝐏ʟᴇᴀsᴇ sᴇɴᴅ ᴀ ᴄʟᴇᴀʀ 𝐒ᴄʀᴇᴇɴsʜᴏᴛ ᴏғ ᴛʜᴇ ᴘᴀʏᴍᴇɴᴛ ɴᴏᴡ."
+                    
+                msg = (f"<blockquote>{P_UPI} <b>𝐌ᴇᴛʜᴏᴅ:</b> FamPay / UPI\n\n🆔 <b>UPI ID:</b>\n<code>{active_upi}</code></blockquote>\n"
                        f"{rate_text}\n"
-                       f"<blockquote>👉 <b>𝐒ᴇɴᴅ 𝐏ʀᴏᴏғ:</b>\n𝐏ʟᴇᴀsᴇ sᴇɴᴅ ᴀ ᴄʟᴇᴀʀ 𝐒ᴄʀᴇᴇɴsʜᴏᴛ ᴏғ ᴛʜᴇ ᴘᴀʏᴍᴇɴᴛ ɴᴏᴡ.</blockquote>")
+                       f"<blockquote>{instruction}</blockquote>")
                 try: 
                     import qrcode
                     qr = qrcode.QRCode(version=1, box_size=10, border=4)
@@ -140,6 +152,70 @@ def register_deposit(bot):
         final_amt = info['amount']
         if info['method'] == "Cwallet": final_amt = int(final_amt * 1.05)
         
+        # 1. AUTO-UPI / IMAP UTR FLOW
+        if info['method'] == "UPI" and e.text and not (e.photo or e.document or e.media):
+            utr_input = re.sub(r'[^0-9A-Za-z]', '', e.text.strip())
+            
+            # Anti-Duplicate UTR Check
+            dup_check = cur.execute("SELECT id, user_id FROM deposits WHERE utr=? AND status='approved'", (utr_input,)).fetchone()
+            if dup_check:
+                waiting_proof[uid] = info  # keep active
+                return await e.reply(f"<blockquote>{P_NO} <b>❌ 𝐔𝐓𝐑 𝐀ʟʀᴇᴀᴅʏ 𝐔sᴇᴅ!</b>\n\n𝐓ʜɪs 𝐔𝐓𝐑 / 𝐓ʀᴀɴsᴀᴄᴛɪᴏɴ 𝐈𝐃 (<code>{utr_input}</code>) ʜᴀs ᴀʟʀᴇᴀᴅʏ ʙᴇᴇɴ ʀᴇᴅᴇᴇᴍᴇᴅ!\n<i>𝐃ᴜᴘʟɪᴄᴀᴛᴇ ᴏʀ ғᴀᴋᴇ 𝐔𝐓𝐑s ᴀʀᴇ sᴛʀɪᴄᴛʟʏ ᴘʀᴏʜɪʙɪᴛᴇᴅ.</i></blockquote>")
+            
+            dep_mode_res = cur.execute("SELECT value FROM settings WHERE key='deposit_mode'").fetchone()
+            dep_mode = dep_mode_res[0] if dep_mode_res and dep_mode_res[0] else "auto"
+            
+            if dep_mode in ("auto", "hybrid"):
+                status_msg = await e.reply(f"<blockquote>⏳ <b>𝐕ᴇʀɪғʏɪɴɢ ʏᴏᴜʀ ᴘᴀʏᴍᴇɴᴛ...</b>\n𝐂ʜᴇᴄᴋɪɴɢ 𝐔𝐓𝐑 <code>{utr_input}</code> ᴡɪᴛʜ ʙᴀɴᴋ sᴇʀᴠᴇʀs. 𝐏ʟᴇᴀsᴇ ᴡᴀɪᴛ...</blockquote>")
+                from utils.imap_verifier import verify_payment_utr
+                ok, v_res = await verify_payment_utr(utr_input)
+                
+                if ok:
+                    credited_amt = v_res.get('amount') or final_amt
+                    async with get_user_lock(uid):
+                        prev_row = cur.execute("SELECT balance FROM users WHERE user_id=?", (uid,)).fetchone()
+                        prev_bal = prev_row[0] if prev_row else 0
+                        update_balance(uid, credited_amt)
+                        cur.execute("INSERT INTO deposits (user_id, amount, method_name, status, utr) VALUES (?, ?, 'UPI (Auto)', 'approved', ?)",
+                                    (uid, credited_amt, utr_input))
+                        cur.execute("UPDATE users SET total_deposited = total_deposited + ? WHERE user_id=?", (credited_amt, uid))
+                        db.commit()
+                        
+                    await process_referral_bonus(uid, credited_amt)
+                    
+                    new_bal = prev_bal + credited_amt
+                    success_text = (f"<blockquote>{PE_CHECK} <b>🎉 𝐏ᴀʏᴍᴇɴᴛ 𝐕ᴇʀɪғɪᴇᴅ & 𝐂ʀᴇᴅɪᴛᴇᴅ!</b>\n\n"
+                                    f"{P_MONEY} <b>𝐀ᴍᴏᴜɴᴛ 𝐀ᴅᴅᴇᴅ:</b> <b>{P_INR}{credited_amt}</b> (${to_usd(credited_amt):.2f})\n"
+                                    f"🔑 <b>𝐔𝐓𝐑:</b> <code>{utr_input}</code>\n"
+                                    f"👤 <b>𝐒ᴇɴᴅᴇʀ:</b> <code>{v_res.get('sender', 'User')}</code>\n"
+                                    f"📈 <b>𝐍ᴇᴡ 𝐁ᴀʟᴀɴᴄᴇ:</b> <b>{P_INR}{new_bal}</b> (${to_usd(new_bal):.2f})</blockquote>")
+                    try: await status_msg.edit(success_text, buttons=[[style_btn("🛒 𝐁ᴜʏ 𝐀ᴄᴄᴏᴜɴᴛ", "buy_menu_main", "primary", icon=5408995930416362034)]])
+                    except: await e.reply(success_text)
+                    
+                    for log_ch in get_log_channels_db():
+                        try:
+                            await bot.send_message(log_ch, f"<blockquote>⚡ <b>✅ 𝐀𝐔𝐓𝐎-𝐔𝐏𝐈 𝐃𝐄𝐏𝐎𝐒𝐈𝐓 𝐕𝐄𝐑𝐈𝐅𝐈𝐄𝐃</b>\n\n👤 <b>User:</b> <code>{uid}</code>\n💰 <b>Amount:</b> <b>{P_INR}{credited_amt}</b>\n🔑 <b>UTR:</b> <code>{utr_input}</code>\n💳 <b>Sender:</b> {v_res.get('sender')}</blockquote>")
+                        except Exception as log_ex:
+                            logger.error(f"Failed to log auto deposit to {log_ch}: {log_ex}")
+                    return
+                else:
+                    if dep_mode == "hybrid":
+                        waiting_proof[uid] = info
+                        fail_text = (f"<blockquote>⚠️ <b>𝐏ᴀʏᴍᴇɴᴛ ɴᴏᴛ ᴅᴇᴛᴇᴄᴛᴇᴅ ʏᴇᴛ ғᴏʀ 𝐔𝐓𝐑:</b> <code>{utr_input}</code>\n\n"
+                                     f"𝐈ғ ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ᴘᴀɪᴅ ᴀɴᴅ ᴛʜᴇ ᴇᴍᴀɪʟ ɪs ᴅᴇʟᴀʏᴇᴅ, ʏᴏᴜ ᴄᴀɴ <b>sᴇɴᴅ ᴀ 𝐒ᴄʀᴇᴇɴsʜᴏᴛ</b> ʜᴇʀᴇ ɴᴏᴡ ғᴏʀ ᴍᴀɴᴜᴀʟ ᴀᴅᴍɪɴ ᴀᴘᴘʀᴏᴠᴀʟ, ᴏʀ ᴛʀʏ ᴇɴᴛᴇʀɪɴɢ ᴛʜᴇ 𝐔𝐓𝐑 ᴀɢᴀɪɴ ɪɴ 1 ᴍɪɴᴜᴛᴇ.</blockquote>")
+                        try: await status_msg.edit(fail_text, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
+                        except: await e.reply(fail_text)
+                        return
+                    else:
+                        waiting_proof[uid] = info
+                        fail_text = (f"<blockquote>❌ <b>𝐏ᴀʏᴍᴇɴᴛ 𝐍ᴏᴛ 𝐅ᴏᴜɴᴅ</b>\n\n"
+                                     f"𝐍ᴏ ᴘᴀʏᴍᴇɴᴛ ᴡᴀs ғᴏᴜɴᴅ ғᴏʀ 𝐔𝐓𝐑 <code>{utr_input}</code> ʏᴇᴛ.\n"
+                                     f"𝐏ʟᴇᴀsᴇ ᴍᴀᴋᴇ sᴜʀᴇ ʏᴏᴜ ʜᴀᴠᴇ ᴘᴀɪᴅ ᴛᴏ <code>vinit-godara@fam</code> ᴀɴᴅ ᴛʀʏ ᴀɢᴀɪɴ ɪɴ 1-2 ᴍɪɴᴜᴛᴇs.</blockquote>")
+                        try: await status_msg.edit(fail_text, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
+                        except: await e.reply(fail_text)
+                        return
+
+        # 2. MANUAL SCREENSHOT / PROOF FLOW
         cur.execute("INSERT INTO deposits (user_id, amount, method_name, status) VALUES (?,?,?,?)", (uid, final_amt, info['method'], "pending"))
         db.commit()
         dep_id = cur.lastrowid

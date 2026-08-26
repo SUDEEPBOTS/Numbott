@@ -265,6 +265,81 @@ async def admin_actions(event):
         btns = [[style_btn("🔙 Back", "adm_lzt_settings", "danger", icon=6129888444245089008)]]
         return await event.edit(f"<blockquote>{res_msg}</blockquote>", buttons=btns)
 
+    elif action_data == "autoupi" and has_perm(uid, 'p_settings'):
+        dep_mode_res = cur.execute("SELECT value FROM settings WHERE key='deposit_mode'").fetchone()
+        dep_mode = dep_mode_res[0] if dep_mode_res and dep_mode_res[0] else "auto"
+        mode_label = "🟢 Auto (IMAP UTR)" if dep_mode == 'auto' else ("⚡ Hybrid (Auto + Fallback)" if dep_mode == 'hybrid' else "📂 Manual (Screenshots)")
+        
+        upi_res = cur.execute("SELECT value FROM settings WHERE key='upi_id'").fetchone()
+        active_upi = upi_res[0] if upi_res and upi_res[0] else "vinit-godara@fam"
+        
+        gmail_res = cur.execute("SELECT value FROM settings WHERE key='gmail_user'").fetchone()
+        active_gmail = gmail_res[0] if gmail_res and gmail_res[0] else "vinitgodaragodara3@gmail.com"
+        
+        msg = (f"<blockquote>💳 <b>𝐀ᴜᴛᴏ-𝐔𝐏𝐈 & 𝐈𝐌𝐀𝐏 𝐆ᴀᴛᴇᴡᴀʏ 𝐒ᴇᴛᴛɪɴɢs</b>\n\n"
+               f"⚙️ <b>𝐃ᴇᴘᴏsɪᴛ 𝐌ᴏᴅᴇ:</b> <b>{mode_label}</b>\n"
+               f"🆔 <b>𝐀ᴄᴛɪᴠᴇ 𝐔𝐏𝐈 𝐈𝐃:</b> <code>{active_upi}</code>\n"
+               f"📧 <b>𝐆ᴍᴀɪʟ 𝐀ᴄᴄᴏᴜɴᴛ:</b> <code>{active_gmail}</code>\n"
+               f"🔒 <b>𝐀ɴᴛɪ-𝐃ᴜᴘʟɪᴄᴀᴛᴇ 𝐔𝐓𝐑:</b> 🟢 <b>Active (100% Protected)</b>\n\n"
+               f"<i>💡 In Auto/Hybrid mode, payments are verified in real-time from bank notification emails!</i></blockquote>")
+               
+        btns = [
+            [style_btn(f"🔄 Mode: {dep_mode.capitalize()}", "adm_toggle_dep_mode", "success", icon=5409271925014801629)],
+            [style_btn("✏️ Change UPI ID", "adm_change_upi", "primary", icon=5409098988156629257),
+             style_btn("📧 Change Gmail", "adm_change_gmail", "primary", icon=5409098988156629257)],
+            [style_btn("🧪 Test IMAP Connection", "adm_test_imap", "primary", icon=5409320020058584473)],
+            [style_btn("🔙 Back to Admin", "adm_adminmain", "danger", icon=6129888444245089008)]
+        ]
+        return await event.edit(msg, buttons=btns)
+
+    elif action_data == "toggle_dep_mode" and has_perm(uid, 'p_settings'):
+        dep_mode_res = cur.execute("SELECT value FROM settings WHERE key='deposit_mode'").fetchone()
+        curr = dep_mode_res[0] if dep_mode_res and dep_mode_res[0] else "auto"
+        nxt = "hybrid" if curr == "auto" else ("manual" if curr == "hybrid" else "auto")
+        cur.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('deposit_mode', ?)", (nxt,))
+        db.commit()
+        await event.answer(f"Deposit Mode switched to {nxt.upper()}!", alert=True)
+        # re-render menu
+        dep_mode = nxt
+        mode_label = "🟢 Auto (IMAP UTR)" if dep_mode == 'auto' else ("⚡ Hybrid (Auto + Fallback)" if dep_mode == 'hybrid' else "📂 Manual (Screenshots)")
+        upi_res = cur.execute("SELECT value FROM settings WHERE key='upi_id'").fetchone()
+        active_upi = upi_res[0] if upi_res and upi_res[0] else "vinit-godara@fam"
+        gmail_res = cur.execute("SELECT value FROM settings WHERE key='gmail_user'").fetchone()
+        active_gmail = gmail_res[0] if gmail_res and gmail_res[0] else "vinitgodaragodara3@gmail.com"
+        
+        msg = (f"<blockquote>💳 <b>𝐀ᴜᴛᴏ-𝐔𝐏𝐈 & 𝐈𝐌𝐀𝐏 𝐆ᴀᴛᴇᴡᴀʏ 𝐒ᴇᴛᴛɪɴɢs</b>\n\n"
+               f"⚙️ <b>𝐃ᴇᴘᴏsɪᴛ 𝐌ᴏᴅᴇ:</b> <b>{mode_label}</b>\n"
+               f"🆔 <b>𝐀ᴄᴛɪᴠᴇ 𝐔𝐏𝐈 𝐈𝐃:</b> <code>{active_upi}</code>\n"
+               f"📧 <b>𝐆ᴍᴀɪʟ 𝐀ᴄᴄᴏᴜɴᴛ:</b> <code>{active_gmail}</code>\n"
+               f"🔒 <b>𝐀ɴᴛɪ-𝐃ᴜᴘʟɪᴄᴀᴛᴇ 𝐔𝐓𝐑:</b> 🟢 <b>Active (100% Protected)</b>\n\n"
+               f"<i>💡 In Auto/Hybrid mode, payments are verified in real-time from bank notification emails!</i></blockquote>")
+        btns = [
+            [style_btn(f"🔄 Mode: {dep_mode.capitalize()}", "adm_toggle_dep_mode", "success", icon=5409271925014801629)],
+            [style_btn("✏️ Change UPI ID", "adm_change_upi", "primary", icon=5409098988156629257),
+             style_btn("📧 Change Gmail", "adm_change_gmail", "primary", icon=5409098988156629257)],
+            [style_btn("🧪 Test IMAP Connection", "adm_test_imap", "primary", icon=5409320020058584473)],
+            [style_btn("🔙 Back to Admin", "adm_adminmain", "danger", icon=6129888444245089008)]
+        ]
+        return await event.edit(msg, buttons=btns)
+
+    elif action_data == "test_imap" and has_perm(uid, 'p_settings'):
+        await event.answer("Testing IMAP...", alert=False)
+        from utils.imap_verifier import get_imap_credentials
+        u, p = get_imap_credentials()
+        try:
+            import ssl, imaplib
+            context = ssl.create_default_context()
+            mail = imaplib.IMAP4_SSL("imap.gmail.com", 993, ssl_context=context)
+            mail.login(u, p)
+            mail.select("INBOX")
+            status, data = mail.search(None, "ALL")
+            total = len(data[0].split())
+            mail.logout()
+            await event.answer(f"✅ IMAP Connected!\n📧 {u}\nTotal Inbox Emails: {total}", alert=True)
+        except Exception as imap_err:
+            await event.answer(f"❌ IMAP Connection Failed: {imap_err}", alert=True)
+        return
+
     elif action_data == "stats" and has_perm(uid, 'p_stats'):
         u_row = cur.execute("SELECT COUNT(*) FROM users").fetchone()
         u = u_row[0] if u_row else 0
@@ -767,6 +842,26 @@ async def admin_actions(event):
                 url_list = [u.strip() for u in url_resp.text.split(",") if u.strip()]
                 set_fsub_data(ch_list, url_list)
                 await conv.send_message(f"{P_YES} <b>All Must-Join Channels & Links Updated!</b> ({len(ch_list)} channels set)")
+
+            elif action_data == "change_upi" and has_perm(uid, 'p_settings'):
+                resp = await get_reply(f"🆔 <b>Enter new UPI ID:</b>\n<i>Example: vinit-godara@fam</i>")
+                new_upi = resp.text.strip()
+                cur.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('upi_id', ?)", (new_upi,))
+                db.commit()
+                await conv.send_message(f"{P_YES} <b>UPI ID Updated:</b> <code>{new_upi}</code>")
+
+            elif action_data == "change_gmail" and has_perm(uid, 'p_settings'):
+                resp = await get_reply(f"📧 <b>Enter Gmail Address and 16-digit App Password:</b>\n\n<i>Format:</i> <code><email> <16-digit-app-password></code>\n<i>Example:</i> <code>myemail@gmail.com dqwo agxp srsw fdax</code>")
+                text = resp.text.strip()
+                parts = text.split(None, 1)
+                if len(parts) >= 2:
+                    g_email, g_pass = parts[0], parts[1]
+                    cur.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('gmail_user', ?)", (g_email,))
+                    cur.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('gmail_pass', ?)", (g_pass,))
+                    db.commit()
+                    await conv.send_message(f"{P_YES} <b>Gmail IMAP Credentials Updated!</b>\n• Email: <code>{g_email}</code>\n• App Password: <code>{g_pass[:4]} **** **** {g_pass[-4:]}</code>")
+                else:
+                    await conv.send_message(f"{P_NO} Invalid format. Provide both Gmail and 16-digit App Password.")
 
             elif action_data == "ban" and has_perm(uid, 'p_bal'):
                 t_uid = int((await get_reply(f"{P_ACC} <b>User ID:</b>")).text)

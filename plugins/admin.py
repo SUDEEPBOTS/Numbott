@@ -55,9 +55,10 @@ async def admin_panel_handler(event):
         r5.extend([style_btn("Discount", "adm_discount", "primary", icon=5409098988156629257), style_btn("Ref %", "adm_refpct", "primary", icon=5409098988156629257)])
         btns.append(r5)
         btns.append([style_btn("📢 Channels & FSub", "adm_channels_mgr", "success", icon=6129627894349045589), style_btn("Support URL", "adm_supporturl", "primary", icon=5409098988156629257)])
-        btns.append([style_btn("🌐 LZT Panel Settings", "adm_lzt_settings", "primary", icon=5409166771330494453), style_btn("Payments", "adm_payments", "primary", icon=5409098988156629257)])
-        btns.append([style_btn("Set USDT Rate", "adm_usdtrate", "primary", icon=5409098988156629257), style_btn("Manage Admins", "adm_manageadmins", "primary", icon=5409098988156629257)])
-        btns.append([style_btn("𝐁ᴀᴄᴋup Users", "adm_backupusr", "primary", icon=5409098988156629257), style_btn("Restore Users", "adm_restoreusr", "primary", icon=5409098988156629257)])
+        btns.append([style_btn("💳 Auto-UPI / IMAP", "adm_autoupi", "success", icon=5409271925014801629), style_btn("🌐 LZT Panel Settings", "adm_lzt_settings", "primary", icon=5409166771330494453)])
+        btns.append([style_btn("Payments", "adm_payments", "primary", icon=5409098988156629257), style_btn("Set USDT Rate", "adm_usdtrate", "primary", icon=5409098988156629257)])
+        btns.append([style_btn("Manage Admins", "adm_manageadmins", "primary", icon=5409098988156629257), style_btn("𝐁ᴀᴄᴋup Users", "adm_backupusr", "primary", icon=5409098988156629257)])
+        btns.append([style_btn("Restore Users", "adm_restoreusr", "primary", icon=5409098988156629257)])
 
     header = (f"<blockquote>{PE_CROWN} <b>𝐀ᴅᴠᴀɴᴄᴇᴅ 𝐀ᴅᴍɪɴ 𝐃ᴀsʜʙᴏᴀʀᴅ</b>\n\n"
               f"⚡ <b>𝐌ᴏᴅᴇ:</b> {mode_text}\n"
