@@ -8,70 +8,71 @@ from database import cur, db, get_flag_by_country_name
 
 LZT_BASE_URL = "https://api.lzt.market"
 
-# Country name to LZT country code mapping (ISO 3166-1 alpha-2)
+# Comprehensive Country Name to ISO 3166-1 alpha-2 mapping with all aliases
 COUNTRY_TO_LZT = {
-    'USA/Canada': 'us',
-    'Russia': 'ru',
-    'Egypt': 'eg',
-    'South Africa': 'za',
-    'Netherlands': 'nl',
-    'Belgium': 'be',
-    'France': 'fr',
-    'Spain': 'es',
-    'Italy': 'it',
-    'UK': 'gb',
-    'Sweden': 'se',
-    'Poland': 'pl',
-    'Germany': 'de',
-    'Peru': 'pe',
-    'Mexico': 'mx',
-    'Argentina': 'ar',
-    'Brazil': 'br',
-    'Chile': 'cl',
-    'Colombia': 'co',
-    'Venezuela': 've',
-    'Malaysia': 'my',
-    'Australia': 'au',
-    'Indonesia': 'id',
-    'Philippines': 'ph',
-    'Thailand': 'th',
-    'Vietnam': 'vn',
-    'China': 'cn',
-    'Turkey': 'tr',
-    'India': 'in',
-    'Pakistan': 'pk',
-    'Afghanistan': 'af',
-    'Sri Lanka': 'lk',
-    'Myanmar': 'mm',
-    'Iran': 'ir',
-    'Morocco': 'ma',
-    'Algeria': 'dz',
-    'Nigeria': 'ng',
-    'Kenya': 'ke',
-    'Tanzania': 'tz',
-    'Ukraine': 'ua',
-    'Bangladesh': 'bd',
-    'Iraq': 'iq',
-    'Saudi Arabia': 'sa',
-    'UAE': 'ae',
-    'Uzbekistan': 'uz',
-    'Kazakhstan': 'kz',
-    'Canada': 'ca',
-    'Cambodia': 'kh',
-    'Hong Kong': 'hk',
-    'Taiwan': 'tw',
-    'Japan': 'jp',
-    'South Korea': 'kr',
-    'Singapore': 'sg'
+    'USA/Canada': 'us', 'USA': 'us', 'United States': 'us', 'United States of America': 'us',
+    'Russia': 'ru', 'Russian Federation': 'ru',
+    'UK': 'gb', 'United Kingdom': 'gb', 'Great Britain': 'gb', 'Britain': 'gb', 'England': 'gb',
+    'India': 'in', 'Indonesia': 'id', 'Brazil': 'br', 'Brasil': 'br',
+    'Pakistan': 'pk', 'Bangladesh': 'bd', 'Nigeria': 'ng', 'Philippines': 'ph',
+    'Egypt': 'eg', 'Vietnam': 'vn', 'Viet Nam': 'vn', 'Turkey': 'tr', 'Turkiye': 'tr',
+    'Iran': 'ir', 'Thailand': 'th', 'Germany': 'de', 'France': 'fr', 'Italy': 'it',
+    'South Africa': 'za', 'Myanmar': 'mm', 'Burma': 'mm', 'South Korea': 'kr', 'Korea': 'kr',
+    'Colombia': 'co', 'Spain': 'es', 'Argentina': 'ar', 'Algeria': 'dz', 'Ukraine': 'ua',
+    'Iraq': 'iq', 'Afghanistan': 'af', 'Poland': 'pl', 'Canada': 'ca', 'Morocco': 'ma',
+    'Saudi Arabia': 'sa', 'Uzbekistan': 'uz', 'Peru': 'pe', 'Angola': 'ao', 'Malaysia': 'my',
+    'Mozambique': 'mz', 'Ghana': 'gh', 'Yemen': 'ye', 'Nepal': 'np', 'Venezuela': 've',
+    'Madagascar': 'mg', 'Cameroon': 'cm', 'Ivory Coast': 'ci', 'North Korea': 'kp',
+    'Australia': 'au', 'Taiwan': 'tw', 'Sri Lanka': 'lk', 'Kazakhstan': 'kz', 'Chile': 'cl',
+    'Zambia': 'zm', 'Romania': 'ro', 'Chad': 'td', 'Somalia': 'so', 'Senegal': 'sn',
+    'Netherlands': 'nl', 'Ecuador': 'ec', 'Guatemala': 'gt', 'Zimbabwe': 'zw',
+    'Cambodia': 'kh', 'Rwanda': 'rw', 'Benin': 'bj', 'Burundi': 'bi', 'Tunisia': 'tn',
+    'Bolivia': 'bo', 'Belgium': 'be', 'Haiti': 'ht', 'Cuba': 'cu', 'South Sudan': 'ss',
+    'Dominican Republic': 'do', 'Czech Republic': 'cz', 'Czechia': 'cz', 'Greece': 'gr',
+    'Jordan': 'jo', 'Portugal': 'pt', 'Azerbaijan': 'az', 'Sweden': 'se', 'Honduras': 'hn',
+    'UAE': 'ae', 'United Arab Emirates': 'ae', 'Hungary': 'hu', 'Tajikistan': 'tj',
+    'Belarus': 'by', 'Austria': 'at', 'Papua New Guinea': 'pg', 'Serbia': 'rs',
+    'Israel': 'il', 'Switzerland': 'ch', 'Togo': 'tg', 'Sierra Leone': 'sl', 'Hong Kong': 'hk',
+    'Laos': 'la', 'Paraguay': 'py', 'Bulgaria': 'bg', 'Libya': 'ly', 'Lebanon': 'lb',
+    'Nicaragua': 'ni', 'Kyrgyzstan': 'kg', 'El Salvador': 'sv', 'Turkmenistan': 'tm',
+    'Singapore': 'sg', 'Denmark': 'dk', 'Finland': 'fi', 'Congo': 'cg', 'Slovakia': 'sk',
+    'Norway': 'no', 'Oman': 'om', 'Costa Rica': 'cr', 'Liberia': 'lr', 'Ireland': 'ie',
+    'New Zealand': 'nz', 'Kuwait': 'kw', 'Panama': 'pa', 'Croatia': 'hr', 'Georgia': 'ge',
+    'Eritrea': 'er', 'Uruguay': 'uy', 'Bosnia and Herzegovina': 'ba', 'Mongolia': 'mn',
+    'Armenia': 'am', 'Jamaica': 'jm', 'Qatar': 'qa', 'Albania': 'al', 'Lithuania': 'lt',
+    'Namibia': 'na', 'Gambia': 'gm', 'Botswana': 'bw', 'Gabon': 'ga', 'Lesotho': 'ls',
+    'Slovenia': 'si', 'Latvia': 'lv', 'Bahrain': 'bh', 'North Macedonia': 'mk',
+    'Trinidad and Tobago': 'tt', 'Estonia': 'ee', 'Mauritius': 'mu', 'Cyprus': 'cy',
+    'Eswatini': 'sz', 'Djibouti': 'dj', 'Fiji': 'fj', 'Comoros': 'km', 'Guyana': 'gy',
+    'Bhutan': 'bt', 'Solomon Islands': 'sb', 'Luxembourg': 'lu', 'Montenegro': 'me',
+    'Suriname': 'sr', 'Cape Verde': 'cv', 'Malta': 'mt', 'Belize': 'bz', 'Brunei': 'bn',
+    'Bahamas': 'bs', 'Maldives': 'mv', 'Iceland': 'is', 'Vanuatu': 'vu', 'Barbados': 'bb',
+    'Sao Tome and Principe': 'st', 'Samoa': 'ws', 'Saint Lucia': 'lc', 'Kiribati': 'ki',
+    'Micronesia': 'fm', 'Grenada': 'gd', 'Tonga': 'to', 'Seychelles': 'sc',
+    'Saint Vincent and the Grenadines': 'vc', 'Antigua and Barbuda': 'ag', 'Andorra': 'ad',
+    'Dominica': 'dm', 'Saint Kitts and Nevis': 'kn', 'Monaco': 'mc', 'Liechtenstein': 'li',
+    'San Marino': 'sm', 'Palau': 'pw', 'Tuvalu': 'tv', 'Nauru': 'nr'
 }
 
 # Reverse mapping: code -> Country name
 LZT_TO_COUNTRY = {v: k for k, v in COUNTRY_TO_LZT.items()}
 
 def get_lzt_code(country_name):
-    return COUNTRY_TO_LZT.get(country_name, country_name.lower())
+    if not country_name:
+        return None
+    clean = str(country_name).strip()
+    if clean in COUNTRY_TO_LZT:
+        return COUNTRY_TO_LZT[clean]
+    clean_lower = clean.lower()
+    for k, v in COUNTRY_TO_LZT.items():
+        if k.lower() == clean_lower:
+            return v
+    if len(clean) == 2 and clean.isalpha():
+        return clean.lower()
+    return None
 
 def get_country_from_lzt(code):
+    if not code: return "Unknown"
     return LZT_TO_COUNTRY.get(code.lower(), code.upper())
 
 class LZTClient:
@@ -179,6 +180,10 @@ class LZTClient:
     async def search_items(self, country_name, year=None, limit=20):
         """Search available Telegram accounts for a country and optional year, filtered by available balance."""
         c_code = get_lzt_code(country_name)
+        if not c_code or len(c_code) != 2:
+            logger.warning(f"No valid 2-letter ISO country code mapped for '{country_name}'")
+            return []
+
         url = f"{LZT_BASE_URL}/telegram"
         balance_id, balance_rub, balance_usd = await self.get_balance_info()
         
@@ -199,6 +204,11 @@ class LZTClient:
                         results = []
                         import datetime
                         for item in items:
+                            # 1. STRICT COUNTRY ENFORCEMENT
+                            item_c = (item.get("telegram_country") or item.get("country") or "").strip().upper()
+                            if item_c != c_code.upper():
+                                continue
+
                             price_rub = item.get("rub_price")
                             if price_rub is None:
                                 price_rub = float(item.get("price", 0))

@@ -298,7 +298,7 @@ async def process_purchase(event, country, year, price_str):
                 async with get_user_lock(uid):
                     cur.execute("UPDATE users SET balance = balance + ? WHERE user_id=?", (final_price, uid))
                     db.commit()
-                return await event.edit(f"{P_NO} <b>Out of stock for this selection.</b> Your money has been refunded.")
+                return await event.edit(f"<blockquote>{P_NO} <b>❌ 𝐎ᴜᴛ ᴏғ 𝐒ᴛᴏᴄᴋ!</b>\n\n𝐍ᴏ ᴀᴄᴄᴏᴜɴᴛs ᴀʀᴇ ᴄᴜʀʀᴇɴᴛʟʏ ᴀᴠᴀɪʟᴀʙʟᴇ ғᴏʀ <b>{c_icon} {country}</b>.\n𝐘ᴏᴜʀ ᴍᴏɴᴇʏ (<b>{P_INR}{final_price}</b>) ʜᴀs ʙᴇᴇɴ <b>ɪɴsᴛᴀɴᴛʟʏ ʀᴇғᴜɴᴅᴇᴅ</b>.</blockquote>", buttons=[[style_btn("🛒 𝐁ᴜʏ 𝐀ɴᴏᴛʜᴇʀ 𝐂ᴏᴜɴᴛʀʏ", "buy_menu_main", "primary", icon=5408995930416362034)]])
 
             buy_success = False
             bought_info = None
