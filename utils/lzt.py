@@ -183,7 +183,7 @@ class LZTClient:
         balance_id, balance_rub, balance_usd = await self.get_balance_info()
         
         params = {
-            "telegram_country[]": c_code.upper(),
+            "country[]": c_code.upper(),
             "order_by": "price_to_up",
             "parse_sticky_items": "0"
         }
