@@ -9,11 +9,57 @@ import html
 from telethon import events, Button, TelegramClient
 from telethon.errors import SessionPasswordNeededError, FloodWaitError, UserIsBlockedError, InputUserDeactivatedError
 from telethon.tl.functions.account import GetPasswordRequest
-from database import cur, db, is_admin, has_perm, ADMIN_ID, get_usdt_rate, COUNTRY_CODES, get_flag_by_country_name, get_country_info, update_balance, is_bot_online
+from database import (
+    cur, db, is_admin, has_perm, ADMIN_ID, get_usdt_rate, COUNTRY_CODES,
+    get_flag_by_country_name, get_country_info, update_balance, is_bot_online,
+    get_bot_mode, set_bot_mode, get_lzt_key, set_lzt_key, get_rub_rate,
+    set_rub_rate, get_lzt_margin, set_lzt_margin, get_fsub_status, set_fsub_status,
+    get_fsub_channels, get_fsub_urls, set_fsub_data, add_fsub_channel,
+    remove_fsub_channel, get_log_channels_db, set_log_channels_db,
+    add_log_channel_db, remove_log_channel_db
+)
 from config import *
 from utils.keyboards import style_btn
 from utils.states import admin_state
+from utils.lzt import lzt_client
 from plugins.admin import admin_panel_handler
+
+async def channels_manager_menu(event):
+    fsub_status = get_fsub_status()
+    fsub_btn_text = "🟢 FSub: ON" if fsub_status == 'on' else "🔴 FSub: OFF"
+    
+    check_channels = get_fsub_channels()
+    join_urls = get_fsub_urls()
+    log_channels = get_log_channels_db()
+    
+    fsub_list_str = ""
+    for i, ch in enumerate(check_channels):
+        url = join_urls[i] if i < len(join_urls) else "No link"
+        fsub_list_str += f"  • <code>{ch}</code> ➡️ {url}\n"
+    if not fsub_list_str: fsub_list_str = "  <i>No Must-Join channels configured.</i>\n"
+
+    log_list_str = ""
+    for ch in log_channels:
+        log_list_str += f"  • <code>{ch}</code>\n"
+    if not log_list_str: log_list_str = "  <i>No Log channels configured.</i>\n"
+
+    msg = (f"<blockquote>📢 <b>𝐂ʜᴀɴɴᴇʟs & 𝐅𝐒ᴜʙ 𝐌ᴀɴᴀɢᴇʀ</b>\n\n"
+           f"🛡️ <b>𝐅ᴏʀᴄᴇ 𝐒ᴜʙsᴄʀɪʙᴇ:</b> <b>{fsub_status.upper()}</b>\n"
+           f"{fsub_list_str}\n"
+           f"📝 <b>𝐋ᴏɢ / 𝐀ᴘᴘʀᴏᴠᴀʟ 𝐂ʜᴀɴɴᴇʟs:</b>\n"
+           f"{log_list_str}</blockquote>")
+
+    btns = [
+        [style_btn(fsub_btn_text, "adm_toggle_fsub", "primary", icon=5409098988156629257)],
+        [style_btn("➕ Add Must-Join Ch", "adm_add_fsub", "success", icon=5409271925014801629),
+         style_btn("🗑️ Remove Must-Join", "adm_rem_fsub", "danger", icon=5408832111773757273)],
+        [style_btn("➕ Add Log Channel", "adm_add_logch", "success", icon=5409271925014801629),
+         style_btn("🗑️ Remove Log Ch", "adm_rem_logch", "danger", icon=5408832111773757273)],
+        [style_btn("🔄 Set All FSub Data", "adm_set_all_fsub", "primary", icon=5409098988156629257)],
+        [style_btn("🔙 Back to Admin", "adm_adminmain", "danger", icon=6129812419028982717)]
+    ]
+    try: await event.edit(msg, buttons=btns)
+    except: await bot.send_message(event.chat_id, msg, buttons=btns)
 
 async def run_stock_check(event):
     msg = await event.respond("🔄 <b>Checking Stock...</b>\nPlease wait, this may take a while.", parse_mode="html")
@@ -149,12 +195,12 @@ async def send_autoprice_page(event, page):
 
 async def send_autoprice_country(event, c_name):
     flag = get_flag_by_country_name(c_name)
-    btns = [[style_btn("Set Common Price", f"adm_apset|{c_name}|Common", "primary", icon=5409098988156629257)]]
+    btns = [[style_btn("Set Common Price (All Years)", f"adm_apset|{c_name}|Common", "primary", icon=5409098988156629257)]]
     y_btns = []
-    for y in range(2024, 1999, -1): y_btns.append(style_btn(f"{y}", f"adm_apset|{c_name}|{y}", "primary", icon=5409098988156629257))
-    for i in range(0, len(y_btns), 4): btns.append(y_btns[i:i+4])
+    for y in range(2026, 2017, -1): y_btns.append(style_btn(f"{y}", f"adm_apset|{c_name}|{y}", "primary", icon=5409098988156629257))
+    for i in range(0, len(y_btns), 3): btns.append(y_btns[i:i+3])
     btns.append([style_btn("Back", "adm_appg|1", "danger", icon=6129888444245089008)])
-    await event.edit(f"{flag} <b>Auto Price: {c_name}</b>\nSelect 'Common' for default price, or specific years:", buttons=btns)
+    await event.edit(f"{flag} <b>Auto Price: {c_name}</b>\nSelect 'Common' for default price, or a specific year:", buttons=btns)
 
 async def admin_actions(event):
     data_full = event.data.decode()
@@ -178,6 +224,47 @@ async def admin_actions(event):
         await event.delete()
         return
 
+    elif action_data == "toggle_mode" and has_perm(uid, 'p_settings'):
+        curr = get_bot_mode()
+        nxt = 'panel' if curr == 'manual' else ('hybrid' if curr == 'panel' else 'manual')
+        set_bot_mode(nxt)
+        mode_names = {'manual': '📂 Manual Mode', 'panel': '🌐 Panel (LZT) Mode', 'hybrid': '⚡ Hybrid Mode'}
+        await event.answer(f"Switched to {mode_names[nxt]}", alert=True)
+        class FakeEvent: chat_id = chat; sender_id = uid
+        await admin_panel_handler(FakeEvent())
+        await event.delete()
+        return
+
+    elif action_data == "lzt_settings" and has_perm(uid, 'p_settings'):
+        key = get_lzt_key()
+        masked_key = (key[:6] + "..." + key[-4:]) if key and len(key) > 10 else ("Set" if key else "Not Set ❌")
+        rub = get_rub_rate()
+        margin = get_lzt_margin()
+        mode = get_bot_mode()
+        
+        msg = (f"<blockquote>🌐 <b>𝐋𝐙𝐓 𝐏ᴀɴᴇʟ 𝐒ᴇᴛᴛɪɴɢs</b>\n\n"
+               f"⚡ <b>𝐁ᴏᴛ 𝐌ᴏᴅᴇ:</b> <code>{mode.upper()}</code>\n"
+               f"🔑 <b>𝐋𝐙𝐓 𝐀𝐏𝐈 𝐊ᴇʏ:</b> <code>{masked_key}</code>\n"
+               f"💹 <b>𝐑𝐔𝐁 𝐭𝐨 𝐈𝐍𝐑 𝐑ᴀᴛᴇ:</b> ₹{rub}\n"
+               f"💰 <b>𝐏ʀᴏғɪᴛ 𝐌ᴀʀɢɪɴ (𝐈𝐍𝐑):</b> +₹{margin}\n\n"
+               f"<i>💡 In Panel/Hybrid mode, stock is fetched from LZT Market in real-time.</i></blockquote>")
+               
+        btns = [
+            [style_btn("🔑 Set API Key", "adm_setlztkey", "primary", icon=5409098988156629257),
+             style_btn("📊 Test / Balance", "adm_lzttest", "success", icon=5409320020058584473)],
+            [style_btn("💹 Set RUB Rate", "adm_setrubrate", "primary", icon=5409098988156629257),
+             style_btn("💰 Set Profit Margin", "adm_setlztmargin", "primary", icon=5409098988156629257)],
+            [style_btn("📋 Custom Price List", "adm_autoprice", "primary", icon=5409098988156629257)],
+            [style_btn("🔙 Back to Admin", "adm_adminmain", "danger", icon=6129888444245089008)]
+        ]
+        return await event.edit(msg, buttons=btns)
+        
+    elif action_data == "lzttest" and has_perm(uid, 'p_settings'):
+        await event.answer("Connecting to LZT...", alert=False)
+        ok, res_msg = await lzt_client.check_connection()
+        btns = [[style_btn("🔙 Back", "adm_lzt_settings", "danger", icon=6129888444245089008)]]
+        return await event.edit(f"<blockquote>{res_msg}</blockquote>", buttons=btns)
+
     elif action_data == "stats" and has_perm(uid, 'p_stats'):
         u_row = cur.execute("SELECT COUNT(*) FROM users").fetchone()
         u = u_row[0] if u_row else 0
@@ -195,6 +282,52 @@ async def admin_actions(event):
                f"{P_MONEY} <b>Total UPI Revenue:</b> {P_INR}{r}\n\n{P_CARD} <b>Overall Users Balance:</b> {P_INR}{total_bal}\n"
                f"{P_CART} <b>Total Accounts Sold:</b> {total_orders}\n{P_USDT} <b>Overall Sales Amount:</b> {P_INR}{total_spent}")
         return await event.edit(msg, buttons=[[style_btn("Back", "adm_adminmain", "danger", icon=6129888444245089008)]])
+
+    elif action_data == "channels_mgr" and has_perm(uid, 'p_settings'):
+        return await channels_manager_menu(event)
+
+    elif action_data == "toggle_fsub" and has_perm(uid, 'p_settings'):
+        curr = get_fsub_status()
+        nxt = 'off' if curr == 'on' else 'on'
+        set_fsub_status(nxt)
+        await event.answer(f"Force Subscribe turned {nxt.upper()}!", alert=True)
+        return await channels_manager_menu(event)
+
+    elif action_data == "rem_fsub" and has_perm(uid, 'p_settings'):
+        chs = get_fsub_channels()
+        urls = get_fsub_urls()
+        if not chs:
+            await event.answer("⚠️ No Must-Join channels to remove.", alert=True)
+            return await channels_manager_menu(event)
+        btns = []
+        for i, ch in enumerate(chs):
+            url_text = f" ({urls[i]})" if i < len(urls) else ""
+            btns.append([style_btn(f"🗑️ Delete #{i+1}: {ch}{url_text[:25]}", f"adm_delfsub|{i}", "danger", icon=5408832111773757273)])
+        btns.append([style_btn("🔙 Back", "adm_channels_mgr", "danger", icon=6129812419028982717)])
+        return await event.edit("<blockquote>🗑️ <b>Select Must-Join Channel to Remove:</b></blockquote>", buttons=btns)
+
+    elif action_data.startswith("delfsub|") and has_perm(uid, 'p_settings'):
+        idx = int(action_data.split("|")[1])
+        remove_fsub_channel(idx)
+        await event.answer("✅ Channel Removed from Must-Join!", alert=True)
+        return await channels_manager_menu(event)
+
+    elif action_data == "rem_logch" and has_perm(uid, 'p_settings'):
+        chs = get_log_channels_db()
+        if not chs:
+            await event.answer("⚠️ No Log channels to remove.", alert=True)
+            return await channels_manager_menu(event)
+        btns = []
+        for ch in chs:
+            btns.append([style_btn(f"🗑️ Delete Log: {ch}", f"adm_dellogch|{ch}", "danger", icon=5408832111773757273)])
+        btns.append([style_btn("🔙 Back", "adm_channels_mgr", "danger", icon=6129812419028982717)])
+        return await event.edit("<blockquote>🗑️ <b>Select Log Channel to Remove:</b></blockquote>", buttons=btns)
+
+    elif action_data.startswith("dellogch|") and has_perm(uid, 'p_settings'):
+        ch = action_data.split("|")[1]
+        remove_log_channel_db(ch)
+        await event.answer(f"✅ Log Channel {ch} Removed!", alert=True)
+        return await channels_manager_menu(event)
 
     elif action_data == "payments" and has_perm(uid, 'p_settings'):
         btns = [
@@ -563,6 +696,30 @@ async def admin_actions(event):
                 db.commit()
                 await conv.send_message(f"{P_YES} Rate set to {r}.")
 
+            elif action_data == "setlztkey" and has_perm(uid, 'p_settings'):
+                resp = await get_reply("🔑 <b>Enter LZT API Token / Key:</b>\n\n<i>Get your token from LZT.market Profile -> Settings -> API Keys</i>")
+                k = resp.text.strip()
+                set_lzt_key(k)
+                await conv.send_message(f"{P_YES} <b>LZT API Key updated successfully!</b>")
+
+            elif action_data == "setrubrate" and has_perm(uid, 'p_settings'):
+                resp = await get_reply(f"💹 <b>Enter RUB to INR Exchange Rate:</b>\n<i>Current: {get_rub_rate()} (Example: 1.15)</i>")
+                try:
+                    r = float(resp.text.strip())
+                    set_rub_rate(r)
+                    await conv.send_message(f"{P_YES} <b>RUB Rate set to ₹{r}</b>")
+                except:
+                    await conv.send_message(f"{P_NO} Invalid rate value.")
+
+            elif action_data == "setlztmargin" and has_perm(uid, 'p_settings'):
+                resp = await get_reply(f"💰 <b>Enter Profit Margin in INR (Added to base cost):</b>\n<i>Current: +₹{get_lzt_margin()} (Example: 25)</i>")
+                try:
+                    m = float(resp.text.strip())
+                    set_lzt_margin(m)
+                    await conv.send_message(f"{P_YES} <b>Profit Margin set to +₹{m}</b>")
+                except:
+                    await conv.send_message(f"{P_NO} Invalid margin value.")
+
             elif action_data == "restoreusr" and has_perm(uid, 'p_settings'):
                 resp = await get_reply(f"📤 <b>Send the <code>users_backup.csv</code> file:</b>")
                 if not resp.file or not resp.file.name.endswith('.csv'): return await conv.send_message(f"{P_NO} Invalid file.")
@@ -578,6 +735,38 @@ async def admin_actions(event):
                 db.commit()
                 os.remove("temp_restore.csv")
                 await conv.send_message(f"{P_YES} Restored {count} users.")
+
+            elif action_data == "add_fsub" and has_perm(uid, 'p_settings'):
+                resp = await get_reply(f"📢 <b>Enter Channel ID / Username & Join URL:</b>\n\n<i>Format:</i> <code><channel_id> <join_url></code>\n<i>Example:</i>\n<code>-1003875933534 https://t.me/sivamXpruff</code>")
+                text = resp.text.strip()
+                parts = text.split()
+                if len(parts) >= 2:
+                    ch_id, join_url = parts[0], parts[1]
+                    add_fsub_channel(ch_id, join_url)
+                    await conv.send_message(f"{P_YES} <b>Must-Join Channel Added!</b>\n• Channel: <code>{ch_id}</code>\n• Link: {join_url}")
+                else:
+                    await conv.send_message(f"{P_NO} Invalid format. Provide both Channel ID and Join URL separated by space.")
+
+            elif action_data == "add_logch" and has_perm(uid, 'p_settings'):
+                resp = await get_reply(f"📝 <b>Enter Log / Approval Channel ID:</b>\n\n<i>Example:</i> <code>-1003875933534</code>\n<i>(Make sure the bot is an Admin with post permissions in the channel!)</i>")
+                text = resp.text.strip()
+                if text.startswith('-') and text[1:].isdigit():
+                    add_log_channel_db(text)
+                    await conv.send_message(f"{P_YES} <b>Log Channel Added:</b> <code>{text}</code>")
+                elif text.isdigit():
+                    add_log_channel_db(f"-100{text}")
+                    await conv.send_message(f"{P_YES} <b>Log Channel Added:</b> <code>-100{text}</code>")
+                else:
+                    await conv.send_message(f"{P_NO} Invalid channel ID. It should look like <code>-1001234567890</code>.")
+
+            elif action_data == "set_all_fsub" and has_perm(uid, 'p_settings'):
+                ch_resp = await get_reply(f"📢 <b>Enter all Must-Join Channel IDs (Comma-separated):</b>\n<i>Example: -1003875933534, -1003965638370</i>")
+                url_resp = await get_reply(f"🔗 <b>Enter all Join URLs (Comma-separated, same order):</b>\n<i>Example: https://t.me/sivamXpruff, https://t.me/+z_62d3jVVtkzYTZl</i>")
+                
+                ch_list = [c.strip() for c in ch_resp.text.split(",") if c.strip()]
+                url_list = [u.strip() for u in url_resp.text.split(",") if u.strip()]
+                set_fsub_data(ch_list, url_list)
+                await conv.send_message(f"{P_YES} <b>All Must-Join Channels & Links Updated!</b> ({len(ch_list)} channels set)")
 
             elif action_data == "ban" and has_perm(uid, 'p_bal'):
                 t_uid = int((await get_reply(f"{P_ACC} <b>User ID:</b>")).text)

@@ -5,7 +5,7 @@ import urllib.parse
 import io
 from telethon import events, Button
 from telethon.errors import MessageNotModifiedError
-from database import cur, db, get_usdt_rate, update_balance, to_usd
+from database import cur, db, get_usdt_rate, update_balance, to_usd, get_log_channels_db, is_admin
 from config import PE_GIFT, PE_LIGHTNING, P_MONEY, P_CARD, P_UPI, P_CW, P_NO, P_YES, P_WARN, P_INR, P_USDT, P_KEY, PE_CHECK, P_ACC, P_ID, LOG_CHANNEL_ID, LOG_CHANNELS, ADMIN_ID, CWALLET_QR, CWALLET_ID, UPI_ID, bot, logger
 from utils.keyboards import style_btn
 from utils.states import deposit_input, waiting_proof, admin_dep_state, custom_dep_amt, get_user_lock
@@ -133,7 +133,7 @@ def register_deposit(bot):
                 else: await e.reply(f"{P_CARD} <b>{method} Deposit</b>{rate_text}\n\n👇 Send Screenshot here:", buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
         except ValueError: await e.respond(f"{P_NO} Please enter a valid number in {P_INR} (INR).")
 
-    @bot.on(events.NewMessage(func=lambda e: e.sender_id in waiting_proof and (e.photo or (e.text and "http" in e.text))))
+    @bot.on(events.NewMessage(func=lambda e: e.sender_id in waiting_proof and (e.photo or e.document or e.media or (e.text and not e.text.startswith('/')))))
     async def msg_wait_proof(e):
         uid = e.sender_id
         info = waiting_proof.pop(uid)
@@ -143,32 +143,72 @@ def register_deposit(bot):
         cur.execute("INSERT INTO deposits (user_id, amount, method_name, status) VALUES (?,?,?,?)", (uid, final_amt, info['method'], "pending"))
         db.commit()
         dep_id = cur.lastrowid
-        await e.reply(f"{PE_GIFT} 𝐃ᴇᴘᴏsɪᴛ ʀᴇǫᴜᴇsᴛ sᴜʙᴍɪᴛᴛᴇᴅ! 𝐏ʟᴇᴀsᴇ ᴡᴀɪᴛ ғᴏʀ ᴀᴅᴍɪɴ ᴀᴘᴘʀᴏᴠᴀʟ.")
-        cap = f"{PE_LIGHTNING} <b>𝐍ᴇᴡ 𝐃ᴇᴘᴏsɪᴛ 𝐑ᴇǫᴜᴇsᴛ</b>\n{P_ACC} 𝐔sᴇʀ: <code>{uid}</code>\n{P_MONEY} 𝐑ᴇǫᴜᴇsᴛ: <b>{P_INR}{info['amount']}</b>\n{P_CARD} 𝐌ᴇᴛʜᴏᴅ: {info['method']}\n{P_ID} 𝐑ᴇғ: <code>{dep_id}</code>"
-        btns = [[style_btn(f"𝐀ᴄᴄᴇᴘᴛ (₹{final_amt})", f"dep_acc|{dep_id}|{uid}|{info['method']}|exact|{final_amt}", "success", icon=5409098988156629257), 
-                 style_btn("𝐑ᴇᴊᴇᴄᴛ", f"dep_rej|{dep_id}|{uid}", "danger", icon=5409119256107297715)],
-                [style_btn("𝐂ᴜsᴛᴏᴍ 𝐀ᴍᴏᴜɴᴛ", f"dep_acc|{dep_id}|{uid}|{info['method']}|custom|0", "primary", icon=5409098988156629257)]]
         
-        try:
-            if not LOG_CHANNELS:
-                raise ValueError("No log channels")
-            for log_ch in LOG_CHANNELS:
-                try:
-                    if e.photo: await bot.send_message(log_ch, cap, file=e.media, buttons=btns)
-                    else: await bot.send_message(log_ch, cap + f"\n🔗 Hash: {html.escape(e.text)}", buttons=btns)
-                except Exception: pass
-        except Exception as log_err:
+        await e.reply(f"<blockquote>{PE_GIFT} <b>𝐃ᴇᴘᴏsɪᴛ ʀᴇǫᴜᴇsᴛ sᴜʙᴍɪᴛᴛᴇᴅ!</b>\n\n⏳ 𝐏ʟᴇᴀsᴇ ᴡᴀɪᴛ ᴡʜɪʟᴇ ᴀɴ ᴀᴅᴍɪɴ ᴠᴇʀɪғɪᴇs ʏᴏᴜʀ ᴘᴀʏᴍᴇɴᴛ. 𝐘ᴏᴜʀ ʙᴀʟᴀɴᴄᴇ ᴡɪʟʟ ʙᴇ ᴄʀᴇᴅɪᴛᴇᴅ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ!</blockquote>")
+        
+        rate = get_usdt_rate()
+        usdt_val = round(final_amt / rate, 2)
+        proof_text = f"\n📝 <b>Details / Note:</b> <code>{html.escape(e.text[:200])}</code>" if (e.text and not e.photo and not e.document) else ""
+        cap = (f"<blockquote>{PE_LIGHTNING} <b>𝐍ᴇᴡ 𝐃ᴇᴘᴏsɪᴛ 𝐑ᴇǫᴜᴇsᴛ</b>\n\n"
+               f"{P_ACC} <b>𝐔sᴇʀ:</b> <code>{uid}</code>\n"
+               f"{P_MONEY} <b>𝐀ᴍᴏᴜɴᴛ:</b> <b>{P_INR}{final_amt}</b> (~${usdt_val})\n"
+               f"{P_CARD} <b>𝐌ᴇᴛʜᴏᴅ:</b> <code>{info['method']}</code>\n"
+               f"{P_ID} <b>𝐃ᴇᴘᴏsɪᴛ 𝐈𝐃:</b> <code>#{dep_id}</code>{proof_text}</blockquote>")
+        
+        btns = [
+            [style_btn(f"✅ 𝐀ᴄᴄᴇᴘᴛ (₹{final_amt})", f"dep_acc|{dep_id}|{uid}|{info['method']}|exact|{final_amt}", "success", icon=5409098988156629257), 
+             style_btn("❌ 𝐑ᴇᴊᴇᴄᴛ", f"dep_rej|{dep_id}|{uid}", "danger", icon=5409119256107297715)],
+            [style_btn("✏️ 𝐂ᴜsᴛᴏᴍ 𝐀ᴍᴏᴜɴᴛ", f"dep_acc|{dep_id}|{uid}|{info['method']}|custom|0", "primary", icon=5409098988156629257)]
+        ]
+        
+        # Deliver to Primary Channel -> Fallback Channel -> Admin DM
+        delivered = False
+        target_channels = get_log_channels_db()
+        
+        # 1. Try Log Channels in priority order
+        for log_ch in target_channels:
             try:
-                if e.photo: await bot.send_message(ADMIN_ID, f"⚠️ <b>LOG CHANNEL ERROR</b>\n\n{cap}", file=e.media, buttons=btns)
-                else: await bot.send_message(ADMIN_ID, f"⚠️ <b>LOG CHANNEL ERROR</b>\n\n{cap}\n🔗 Hash: {html.escape(e.text)}", buttons=btns)
-            except Exception as admin_err: logger.error(f"Failed to log deposit: {admin_err}")
+                if e.media:
+                    await bot.send_file(log_ch, e.media, caption=cap, buttons=btns)
+                else:
+                    await bot.send_message(log_ch, cap, buttons=btns)
+                delivered = True
+                break  # Successfully delivered to primary channel!
+            except Exception as ex:
+                logger.error(f"Failed to send deposit to channel {log_ch}: {ex}, trying fallback...")
+        
+        # 2. If all channels failed or no channels configured -> Fallback to Admin PM
+        if not delivered:
+            try:
+                admin_rows = cur.execute("SELECT user_id FROM admins").fetchall()
+                admin_ids = [r[0] for r in admin_rows]
+                if ADMIN_ID and ADMIN_ID not in admin_ids:
+                    admin_ids.append(ADMIN_ID)
+                
+                for a_id in admin_ids:
+                    try:
+                        if e.media:
+                            await bot.send_file(a_id, e.media, caption=f"🔔 <b>[FALLBACK PAYMENT APPROVAL]</b>\n{cap}", buttons=btns)
+                        else:
+                            await bot.send_message(a_id, f"🔔 <b>[FALLBACK PAYMENT APPROVAL]</b>\n{cap}", buttons=btns)
+                        break  # Delivered to admin PM
+                    except Exception:
+                        pass
+            except Exception as e_adm:
+                logger.error(f"Error sending fallback deposit to admin DM: {e_adm}")
 
     @bot.on(events.CallbackQuery(pattern=r"^dep_acc\|"))
     async def cb_dep_acc(e):
+        admin_uid = e.sender_id
+        if not is_admin(admin_uid):
+            return await e.answer("🚫 Access Denied! Only Bot Admins can approve deposits.", alert=True)
+            
         p = e.data.decode().split("|")
         dep_id, t_uid, method, a_type = p[1], int(p[2]), p[3], p[4]
-        row = cur.execute("SELECT status FROM deposits WHERE id=?", (dep_id,)).fetchone()
-        if not row or row[0] != 'pending': return await e.edit(f"{P_WARN} Already processed.")
+        
+        row = cur.execute("SELECT status, amount FROM deposits WHERE id=?", (dep_id,)).fetchone()
+        if not row or row[0] != 'pending': 
+            return await e.answer("⚠️ This deposit request has already been processed!", alert=True)
         
         if a_type == "exact":
             amt = int(p[5]) 
@@ -183,55 +223,65 @@ def register_deposit(bot):
             
             await process_referral_bonus(t_uid, amt)
             
-            user_msg = (f"<blockquote>{PE_CHECK} <b>Deposit Approved!</b>\n\n{P_MONEY} <b>Amount Added:</b> ${to_usd(amt):.2f} ({P_INR}{amt})\n"
-                        f"📉 <b>𝐏ʀᴇᴠious 𝐁ᴀʟᴀɴᴄᴇ:</b> ${to_usd(prev_bal):.2f} ({P_INR}{prev_bal})\n📈 <b>New 𝐁ᴀʟᴀɴᴄᴇ:</b> ${to_usd(prev_bal+amt):.2f} ({P_INR}{prev_bal+amt})</blockquote>")
-            await bot.send_message(int(t_uid), user_msg)
-            try: await e.edit(f"{PE_CHECK} <b>INSTANT CREDITED {P_INR}{amt} TO {t_uid}</b>")
+            user_msg = (f"<blockquote>{PE_CHECK} <b>🎉 𝐃ᴇᴘᴏsɪᴛ 𝐀ᴘᴘʀᴏᴠᴇᴅ!</b>\n\n"
+                        f"{P_MONEY} <b>𝐀ᴍᴏᴜɴᴛ 𝐀ᴅᴅᴇᴅ:</b> <b>{P_INR}{amt}</b> (${to_usd(amt):.2f})\n"
+                        f"📉 <b>𝐏ʀᴇᴠɪᴏᴜs 𝐁ᴀʟᴀɴᴄᴇ:</b> {P_INR}{prev_bal}\n"
+                        f"📈 <b>𝐍ᴇᴡ 𝐁ᴀʟᴀɴᴄᴇ:</b> <b>{P_INR}{prev_bal+amt}</b> (${to_usd(prev_bal+amt):.2f})</blockquote>")
+            try: await bot.send_message(int(t_uid), user_msg)
+            except: pass
+            
+            approved_text = (f"<blockquote>{PE_CHECK} <b>✅ 𝐃ᴇᴘᴏsɪᴛ 𝐀ᴘᴘʀᴏᴠᴇᴅ!</b>\n\n"
+                             f"{P_ACC} <b>𝐔sᴇʀ:</b> <code>{t_uid}</code>\n"
+                             f"{P_MONEY} <b>𝐀ᴍᴏᴜɴᴛ 𝐂ʀᴇᴅɪᴛᴇᴅ:</b> <b>{P_INR}{amt}</b>\n"
+                             f"{P_CARD} <b>𝐌ᴇᴛʜᴏᴅ:</b> <code>{method}</code>\n"
+                             f"👨‍💻 <b>𝐀ᴘᴘʀᴏᴠᴇᴅ 𝐁ʏ:</b> <code>{admin_uid}</code></blockquote>")
+            try: await e.edit(approved_text)
             except MessageNotModifiedError: pass
+            await e.answer(f"✅ Approved! ₹{amt} credited to user {t_uid}.", alert=True)
             
         elif a_type == "custom":
             custom_dep_amt[int(dep_id)] = "0"
-            await e.edit(f"{P_KEY} <b>Enter 𝐂ᴜsᴛᴏᴍ 𝐀ᴍᴏᴜɴᴛ for User {t_uid}:</b>\n\n{P_MONEY} 0", buttons=get_admin_custom_keypad(int(dep_id)))
+            await e.edit(f"<blockquote>{P_KEY} <b>Enter 𝐂ᴜsᴛᴏᴍ 𝐀ᴍᴏᴜɴᴛ for User <code>{t_uid}</code>:</b>\n\n{P_MONEY} <b>{P_INR}0</b></blockquote>", buttons=get_admin_custom_keypad(int(dep_id)))
             
     @bot.on(events.CallbackQuery(pattern=r"^dep_rej\|"))
     async def cb_dep_rej(e):
-        uid = e.sender_id
+        admin_uid = e.sender_id
+        if not is_admin(admin_uid):
+            return await e.answer("🚫 Access Denied! Only Bot Admins can reject deposits.", alert=True)
+            
         p = e.data.decode().split("|")
         dep_id, t_uid = p[1], int(p[2])
-        row = cur.execute("SELECT status FROM deposits WHERE id=?", (dep_id,)).fetchone()
-        if not row or row[0] != 'pending': return await e.edit(f"{P_WARN} Already processed.")
-        admin_dep_state[uid] = {'target_uid': t_uid, 'dep_id': dep_id, 'step': 'wait_reason', 'msg_id': e.message_id}
-        await bot.send_message(uid, f"{P_WARN} Reply to this message with the REASON for rejecting user <code>{t_uid}</code>:")
-        try: await e.answer("Check your bot PMs to enter the reason.", alert=True)
-        except: pass
-
-    @bot.on(events.NewMessage(func=lambda e: e.sender_id in admin_dep_state and admin_dep_state[e.sender_id]['step'] == 'wait_reason'))
-    async def msg_admin_rej_reason(e):
-        uid = e.sender_id
-        st = admin_dep_state[uid]
-        t_uid, dep_id, msg_id = st['target_uid'], st['dep_id'], st['msg_id']
+        
+        row = cur.execute("SELECT status, amount, method_name FROM deposits WHERE id=?", (dep_id,)).fetchone()
+        if not row or row[0] != 'pending': 
+            return await e.answer("⚠️ This deposit request has already been processed!", alert=True)
+        
         cur.execute("UPDATE deposits SET status='rejected' WHERE id=?", (dep_id,))
         db.commit()
         
         try:
-            await bot.edit_message(LOG_CHANNEL_ID, msg_id, f"{P_NO} <b>REJECTED USER {t_uid}</b>\nReason: {html.escape(e.text)}")
-            for log_ch in LOG_CHANNELS:
-                if log_ch != LOG_CHANNEL_ID:
-                    try: await bot.send_message(log_ch, f"{P_NO} <b>REJECTED USER {t_uid}</b>\nReason: {html.escape(e.text)}")
-                    except: pass
+            await bot.send_message(int(t_uid), f"<blockquote>{P_NO} <b>❌ 𝐃ᴇᴘᴏsɪᴛ 𝐑ᴇᴊᴇᴄᴛᴇᴅ!</b>\n\n𝐘ᴏᴜʀ ᴅᴇᴘᴏsɪᴛ ʀᴇǫᴜᴇsᴛ ᴏғ <b>{P_INR}{row[1]}</b> ᴡᴀs ʀᴇᴊᴇᴄᴛᴇᴅ ʙʏ ᴀᴅᴍɪɴ.\n𝐈ғ ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ᴘᴀɪᴅ, ᴘʟᴇᴀsᴇ ᴄᴏɴᴛᴀᴄᴛ <b>𝐒ᴜᴘᴘᴏʀᴛ</b> ᴡɪᴛʜ ʏᴏᴜʀ ᴘᴀʏᴍᴇɴᴛ ᴘʀᴏᴏғ.</blockquote>")
         except: pass
         
-        await bot.send_message(int(t_uid), f"{P_NO} <b>Deposit 𝐑ᴇᴊᴇᴄᴛed!</b>\n📋 Reason: {html.escape(e.text)}")
-        await e.reply(f"{P_YES} 𝐑ᴇᴊᴇᴄᴛion reason sent.")
-        admin_dep_state.pop(uid)
+        rej_text = (f"<blockquote>{P_NO} <b>❌ 𝐃ᴇᴘᴏsɪᴛ 𝐑ᴇᴊᴇᴄᴛᴇᴅ!</b>\n\n"
+                    f"{P_ACC} <b>𝐔sᴇʀ:</b> <code>{t_uid}</code>\n"
+                    f"{P_MONEY} <b>𝐀ᴍᴏᴜɴᴛ:</b> {P_INR}{row[1]}\n"
+                    f"👨‍💻 <b>𝐑ᴇᴊᴇᴄᴛᴇᴅ 𝐁ʏ:</b> <code>{admin_uid}</code></blockquote>")
+        try: await e.edit(rej_text)
+        except MessageNotModifiedError: pass
+        await e.answer(f"❌ Deposit #{dep_id} rejected.", alert=True)
 
     @bot.on(events.CallbackQuery(pattern=r"^dkp\|"))
     async def cb_dkp(e):
         uid = e.sender_id
+        if not is_admin(uid):
+            return await e.answer("🚫 Access Denied! Only Bot Admins can set deposit amounts.", alert=True)
+            
         _, dep_id, action = e.data.decode().split("|")
         dep_id = int(dep_id)
         row = cur.execute("SELECT user_id, method_name, status, amount FROM deposits WHERE id=?", (dep_id,)).fetchone()
-        if not row or row[2] != 'pending': return await e.edit(f"{P_WARN} Already processed.")
+        if not row or row[2] != 'pending': 
+            return await e.answer("⚠️ Already processed.", alert=True)
         t_uid, method, orig_amt = row[0], row[1], row[3]
         
         curr = custom_dep_amt.get(dep_id, "0")
@@ -240,12 +290,15 @@ def register_deposit(bot):
             if curr == "0": curr = action
             else: curr += action
             if len(curr) > 7: curr = curr[:7]
-        elif action == "del": curr = curr[:-1] or "0"
+        elif action == "del": 
+            curr = curr[:-1] or "0"
         elif action == "cancel":
-            btns = [[style_btn(f"𝐀ᴄᴄᴇᴘᴛ (₹{orig_amt})", f"dep_acc|{dep_id}|{t_uid}|{method}|exact|{orig_amt}", "success", icon=6147460667281511517), 
-                     style_btn("𝐑ᴇᴊᴇᴄᴛ", f"dep_rej|{dep_id}|{t_uid}", "danger", icon=6129888444245089008)],
-                    [style_btn("𝐂ᴜsᴛᴏᴍ 𝐀ᴍᴏᴜɴᴛ", f"dep_acc|{dep_id}|{t_uid}|{method}|custom|0", "primary", icon=5796170975699544141)]]
-            return await e.edit(f"{PE_LIGHTNING} <b>𝐍ᴇᴡ 𝐃ᴇᴘᴏsɪᴛ 𝐑ᴇǫᴜᴇsᴛ</b>\n{P_ACC} 𝐔sᴇʀ: <code>{t_uid}</code>\n{P_MONEY} 𝐑ᴇǫᴜᴇsᴛ: <b>{P_INR}{orig_amt}</b>\n{P_CARD} 𝐌ᴇᴛʜᴏᴅ: {method}\n{P_ID} 𝐑ᴇғ: <code>{dep_id}</code>", buttons=btns)
+            btns = [
+                [style_btn(f"✅ 𝐀ᴄᴄᴇᴘᴛ (₹{orig_amt})", f"dep_acc|{dep_id}|{t_uid}|{method}|exact|{orig_amt}", "success", icon=5409098988156629257), 
+                 style_btn("❌ 𝐑ᴇᴊᴇᴄᴛ", f"dep_rej|{dep_id}|{t_uid}", "danger", icon=5409119256107297715)],
+                [style_btn("✏️ 𝐂ᴜsᴛᴏᴍ 𝐀ᴍᴏᴜɴᴛ", f"dep_acc|{dep_id}|{t_uid}|{method}|custom|0", "primary", icon=5409098988156629257)]
+            ]
+            return await e.edit(f"<blockquote>{PE_LIGHTNING} <b>𝐍ᴇᴡ 𝐃ᴇᴘᴏsɪᴛ 𝐑ᴇǫᴜᴇsᴛ</b>\n\n{P_ACC} 𝐔sᴇʀ: <code>{t_uid}</code>\n{P_MONEY} 𝐑ᴇǫᴜᴇsᴛ: <b>{P_INR}{orig_amt}</b>\n{P_CARD} 𝐌ᴇᴛʜᴏᴅ: <code>{method}</code>\n{P_ID} 𝐑ᴇғ: <code>#{dep_id}</code></blockquote>", buttons=btns)
         elif action == "conf":
             amt = int(curr)
             if amt <= 0: return await e.answer("Amount must be > 0", alert=True)
@@ -259,9 +312,16 @@ def register_deposit(bot):
                 db.commit()
                 
             await process_referral_bonus(t_uid, amt)
-            await e.edit(f"{PE_CHECK} <b>APPROVED {P_INR}{amt} TO {t_uid} (𝐂ᴜsᴛᴏᴍ 𝐀ᴍᴏᴜɴᴛ)</b>")
-            await bot.send_message(int(t_uid), f"{PE_CHECK} <b>Deposit Approved!</b>\n{P_MONEY} Amount Added: {P_INR}{amt}\n📉 Old: {P_INR}{prev_bal} | 📈 New: {P_INR}{prev_bal+amt}")
+            conf_text = (f"<blockquote>{PE_CHECK} <b>✅ 𝐃ᴇᴘᴏsɪᴛ 𝐀ᴘᴘʀᴏᴠᴇᴅ (𝐂ᴜsᴛᴏᴍ)!</b>\n\n"
+                         f"{P_ACC} <b>𝐔sᴇʀ:</b> <code>{t_uid}</code>\n"
+                         f"{P_MONEY} <b>𝐀ᴍᴏᴜɴᴛ 𝐂ʀᴇᴅɪᴛᴇᴅ:</b> <b>{P_INR}{amt}</b>\n"
+                         f"👨‍💻 <b>𝐀ᴘᴘʀᴏᴠᴇᴅ 𝐁ʏ:</b> <code>{uid}</code></blockquote>")
+            await e.edit(conf_text)
+            try:
+                await bot.send_message(int(t_uid), f"<blockquote>{PE_CHECK} <b>🎉 𝐃ᴇᴘᴏsɪᴛ 𝐀ᴘᴘʀᴏᴠᴇᴅ!</b>\n\n{P_MONEY} <b>𝐀ᴍᴏᴜɴᴛ 𝐀ᴅᴅᴇᴅ:</b> <b>{P_INR}{amt}</b>\n📉 <b>𝐎ʟᴅ:</b> {P_INR}{prev_bal} | 📈 <b>𝐍ᴇᴡ:</b> <b>{P_INR}{prev_bal+amt}</b></blockquote>")
+            except: pass
+            await e.answer(f"✅ Approved ₹{amt} for user {t_uid}.", alert=True)
             return
 
         custom_dep_amt[dep_id] = curr
-        await e.edit(f"{P_KEY} <b>Enter 𝐂ᴜsᴛᴏᴍ 𝐀ᴍᴏᴜɴᴛ for User {t_uid}:</b>\n\n{P_MONEY} {curr}", buttons=get_admin_custom_keypad(dep_id))
+        await e.edit(f"<blockquote>{P_KEY} <b>Enter 𝐂ᴜsᴛᴏᴍ 𝐀ᴍᴏᴜɴᴛ for User <code>{t_uid}</code>:</b>\n\n{P_MONEY} <b>{P_INR}{curr}</b></blockquote>", buttons=get_admin_custom_keypad(dep_id))

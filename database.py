@@ -3,12 +3,8 @@ import os
 from config import ADMIN_ID
 
 # Initialize DB
-db_path = "otp_bot_final.db"
-# Ensure we run from the old DB to not lose data, or just point to it.
-# We'll use absolute path or same dir. We can symlink later if needed, but let's just use the current path
-# Better yet, since we will run from Numbott_Telethon, let's use the DB from ../Numbott to share it, or copy it.
-# Let's just point to it directly:
-db = sqlite3.connect("../Numbott/otp_bot_final.db", check_same_thread=False, timeout=20)
+db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "otp_bot_final.db")
+db = sqlite3.connect(db_path, check_same_thread=False, timeout=20)
 db.execute("PRAGMA journal_mode=WAL;")
 cur = db.cursor()
 
@@ -175,3 +171,171 @@ def get_country_info(phone):
         prefix = phone[:length]
         if prefix in COUNTRY_CODES: return COUNTRY_CODES[prefix]
     return "Unknown", "🌍"
+
+def get_bot_mode():
+    res = cur.execute("SELECT value FROM settings WHERE key='bot_mode'").fetchone()
+    if res and res[0] in ('manual', 'panel', 'hybrid'):
+        return res[0]
+    return os.getenv("BOT_MODE", "manual").strip().lower()
+
+def set_bot_mode(mode):
+    cur.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('bot_mode', ?)", (mode,))
+    db.commit()
+
+def get_lzt_key():
+    res = cur.execute("SELECT value FROM settings WHERE key='lzt_api_key'").fetchone()
+    if res and res[0]:
+        return res[0].strip()
+    return os.getenv("LZT_API_KEY", "").strip()
+
+def set_lzt_key(key):
+    cur.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('lzt_api_key', ?)", (key.strip(),))
+    db.commit()
+
+def get_rub_rate():
+    res = cur.execute("SELECT value FROM settings WHERE key='rub_rate'").fetchone()
+    if res and res[0]:
+        try: return float(res[0])
+        except: pass
+    try: return float(os.getenv("RUB_RATE", "1.15"))
+    except: return 1.15
+
+def set_rub_rate(rate):
+    cur.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('rub_rate', ?)", (str(rate),))
+    db.commit()
+
+def get_lzt_margin():
+    res = cur.execute("SELECT value FROM settings WHERE key='lzt_margin'").fetchone()
+    if res and res[0]:
+        try: return float(res[0])
+        except: pass
+    try: return float(os.getenv("LZT_MARGIN", "25.0"))
+    except: return 25.0
+
+def set_lzt_margin(margin):
+    cur.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('lzt_margin', ?)", (str(margin),))
+    db.commit()
+
+def get_panel_price(country, year, lzt_price_rub=0):
+    # 1. Check if admin has set explicit custom price in auto_prices table for this specific (country, year)
+    row = cur.execute("SELECT price FROM auto_prices WHERE country=? AND year=?", (country, str(year))).fetchone()
+    if row and row[0] and row[0] > 0:
+        return int(row[0])
+    
+    # 2. Get base country price (set with year='Common' or 'ALL')
+    row_all = cur.execute("SELECT price FROM auto_prices WHERE country=? AND year IN ('Common', 'ALL')", (country,)).fetchone()
+    base_price = int(row_all[0]) if (row_all and row_all[0] and row_all[0] > 0) else None
+
+    # Aged year price additions (if no explicit year price is set)
+    YEAR_ADDITIONS = {
+        2026: 0,
+        2025: 25,
+        2024: 55,
+        2023: 85,
+        2022: 125,
+        2021: 175,
+        2020: 230,
+        2019: 290,
+        2018: 350,
+        2017: 420
+    }
+
+    try: y_int = int(year)
+    except: y_int = 2026
+
+    if base_price is not None:
+        add_amount = YEAR_ADDITIONS.get(y_int, 0 if y_int >= 2026 else (2026 - y_int) * 60)
+        return base_price + add_amount
+        
+    # 3. Dynamic calculation from LZT RUB price if no base price is found
+    rub_rate = get_rub_rate()
+    margin = get_lzt_margin()
+    inr_cost = lzt_price_rub * rub_rate
+    calculated = round(inr_cost + margin)
+    return max(int(calculated), 25)
+
+def get_fsub_status():
+    res = cur.execute("SELECT value FROM settings WHERE key='fsub_status'").fetchone()
+    return res[0].strip().lower() if res and res[0] else 'on'
+
+def set_fsub_status(status):
+    cur.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('fsub_status', ?)", (str(status).strip().lower(),))
+    db.commit()
+
+def get_fsub_channels():
+    res = cur.execute("SELECT value FROM settings WHERE key='fsub_channels'").fetchone()
+    if res and res[0] is not None:
+        val = res[0].strip()
+        if not val: return []
+        return [c.strip() for c in val.split(",") if c.strip()]
+    raw = os.getenv("CHECK_CHANNELS", "")
+    return [c.strip() for c in raw.split(",") if c.strip()]
+
+def get_fsub_urls():
+    res = cur.execute("SELECT value FROM settings WHERE key='fsub_urls'").fetchone()
+    if res and res[0] is not None:
+        val = res[0].strip()
+        if not val: return []
+        return [u.strip() for u in val.split(",") if u.strip()]
+    raw = os.getenv("JOIN_URLS", "")
+    return [u.strip() for u in raw.split(",") if u.strip()]
+
+def set_fsub_data(channels_list, urls_list):
+    ch_str = ",".join([str(c).strip() for c in channels_list if str(c).strip()])
+    url_str = ",".join([str(u).strip() for u in urls_list if str(u).strip()])
+    cur.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('fsub_channels', ?)", (ch_str,))
+    cur.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('fsub_urls', ?)", (url_str,))
+    db.commit()
+
+def add_fsub_channel(channel_id, join_url):
+    chs = get_fsub_channels()
+    urls = get_fsub_urls()
+    chs.append(str(channel_id).strip())
+    urls.append(str(join_url).strip())
+    set_fsub_data(chs, urls)
+
+def remove_fsub_channel(index):
+    chs = get_fsub_channels()
+    urls = get_fsub_urls()
+    if 0 <= index < len(chs):
+        chs.pop(index)
+        if index < len(urls):
+            urls.pop(index)
+        set_fsub_data(chs, urls)
+
+def get_log_channels_db():
+    res = cur.execute("SELECT value FROM settings WHERE key='log_channels'").fetchone()
+    if res and res[0] is not None:
+        val = res[0].strip()
+        if not val: return []
+        out = []
+        for c in val.split(","):
+            c = c.strip()
+            if c:
+                try: out.append(int(c))
+                except: out.append(c)
+        return out
+    from config import LOG_CHANNELS
+    return LOG_CHANNELS
+
+def set_log_channels_db(channels_list):
+    ch_str = ",".join([str(c).strip() for c in channels_list if str(c).strip()])
+    cur.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('log_channels', ?)", (ch_str,))
+    db.commit()
+
+def add_log_channel_db(channel_id):
+    chs = get_log_channels_db()
+    c_str = str(channel_id).strip()
+    try: val = int(c_str)
+    except: val = c_str
+    if val not in chs:
+        chs.append(val)
+        set_log_channels_db(chs)
+
+def remove_log_channel_db(channel_id):
+    chs = get_log_channels_db()
+    c_str = str(channel_id).strip()
+    chs = [c for c in chs if str(c) != c_str]
+    set_log_channels_db(chs)
+
+
