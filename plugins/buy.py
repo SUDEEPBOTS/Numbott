@@ -353,10 +353,17 @@ async def process_purchase(event, country, year, price_str):
                    f"1. 𝐎ᴘᴇɴ 𝐓ᴇʟᴇɢʀᴀᴍ & 𝐀ᴅᴅ 𝐀ᴄᴄᴏᴜɴᴛ\n"
                    f"2. 𝐄ɴᴛᴇʀ ᴛʜᴇ ɴᴜᴍʙᴇʀ ᴀʙᴏᴠᴇ (<code>+{phone}</code>).\n"
                    f"3. ⏳ <b>𝐏ʟᴇᴀsᴇ ᴡᴀɪᴛ!</b> 𝐓ʜᴇ ʙᴏᴛ ɪs ᴀᴄᴛɪᴠᴇʟʏ ʟɪsᴛᴇɴɪɴɢ ғᴏʀ ʏᴏᴜʀ 𝐎𝐓𝐏 ᴀɴᴅ ᴡɪʟʟ sᴇɴᴅ ɪᴛ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ᴏɴᴄᴇ 𝐓ᴇʟᴇɢʀᴀᴍ ᴅᴇʟɪᴠᴇʀs ɪᴛ.\n\n"
-                   f"<i>𝐍ᴏᴛᴇ: 𝐈ғ ɴᴏ 𝐎𝐓𝐏 ɪs ʀᴇᴄᴇɪᴠᴇᴅ ᴡɪᴛʜɪɴ 10 ᴍɪɴᴜᴛᴇs, ᴛʜᴇ ʙᴏᴛ ᴡɪʟʟ ᴀᴜᴛᴏ-ᴄᴀɴᴄᴇʟ ᴀɴᴅ ʀᴇғᴜɴᴅ ʏᴏᴜʀ ʙᴀʟᴀɴᴄᴇ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ.</i></blockquote>")
+                   f"<i>💡 𝐄ɴᴛᴇʀ ᴛʜᴇ ɴᴜᴍʙᴇʀ ɪɴ 𝐓ᴇʟᴇɢʀᴀᴍ ᴀɴᴅ ᴛᴀᴘ '𝐒ᴇɴᴅ 𝐒𝐌𝐒/𝐂ᴏᴅᴇ'. 𝐘ᴏᴜʀ 𝐎𝐓𝐏 ᴡɪʟʟ ᴀʀʀɪᴠᴇ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ʜᴇʀᴇ!</i></blockquote>")
             
-            cancel_btn = [[style_btn("❌ 𝐂ᴀɴᴄᴇʟ & 𝐑ᴇғᴜɴᴅ", f"cancel_order|{phone}", "danger", icon=6129888444245089008)]]
-            sent_msg = await event.edit(msg, buttons=cancel_btn)
+            from database import is_admin
+            active_btns = [
+                [style_btn("🔄 𝐆ᴇᴛ 𝐎𝐓𝐏 𝐀ɢᴀɪɴ", f"get_otp_again|{phone}", "primary", icon=5408995930416362034)],
+                [style_btn("✅ 𝐅ɪɴɪsʜ 𝐎ʀᴅᴇʀ", f"finish_order|{phone}", "success", icon=5409320020058584473)]
+            ]
+            if is_admin(uid):
+                active_btns.append([style_btn("❌ [Admin] Cancel & Refund", f"cancel_order|{phone}", "danger", icon=6129888444245089008)])
+                
+            sent_msg = await event.edit(msg, buttons=active_btns)
 
             active_orders[phone] = {
                 'uid': uid, 'client': client, 'sess': str_sess, 'item_id': item_id,
@@ -434,13 +441,18 @@ async def auto_otp_task(phone):
         try: await order['client'].disconnect()
         except: pass
         
-        async with get_user_lock(uid):
-            cur.execute("UPDATE users SET balance = balance + ? WHERE user_id=?", (order['price'], uid))
-            cur.execute("UPDATE stock SET available=1 WHERE phone=?", (phone,))
-            db.commit()
-            
-        try: await bot.edit_message(uid, msg_id, f"{P_TIME} <b>𝐎ʀᴅᴇʀ 𝐄xᴘɪʀᴇᴅ!</b>\n𝐓ʜᴇ 10-ᴍɪɴᴜᴛᴇ ʟɪᴍɪᴛ ғᴏʀ <code>{phone}</code> ʀᴀɴ ᴏᴜᴛ. 𝐘ᴏᴜʀ ᴍᴏɴᴇʏ ({P_INR}{order['price']}) ʜᴀs ʙᴇᴇɴ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ʀᴇғᴜɴᴅᴇᴅ.")
-        except: pass
+        # Local manual stock -> refund & restore stock
+        if not order.get('is_lzt'):
+            async with get_user_lock(uid):
+                cur.execute("UPDATE users SET balance = balance + ? WHERE user_id=?", (order['price'], uid))
+                cur.execute("UPDATE stock SET available=1 WHERE phone=?", (phone,))
+                db.commit()
+            try: await bot.edit_message(uid, msg_id, f"<blockquote>{P_TIME} <b>𝐎ʀᴅᴇʀ 𝐄xᴘɪʀᴇᴅ!</b>\n\n𝐓ʜᴇ 10-ᴍɪɴᴜᴛᴇ ʟɪᴍɪᴛ ғᴏʀ <code>+{phone}</code> ʀᴀɴ ᴏᴜᴛ. 𝐘ᴏᴜʀ ᴍᴏɴᴇʏ ({P_INR}{order['price']}) ʜᴀs ʙᴇᴇɴ ʀᴇғᴜɴᴅᴇᴅ.</blockquote>")
+            except: pass
+        else:
+            # LZT Panel purchased accounts -> do not auto-refund to prevent wallet drainage exploits
+            try: await bot.edit_message(uid, msg_id, f"<blockquote>{P_TIME} <b>𝐒ᴇssɪᴏɴ 𝐓ɪᴍᴇᴏᴜᴛ</b>\n\n𝐓ʜᴇ 10-ᴍɪɴᴜᴛᴇ ʟɪsᴛᴇɴᴇʀ ғᴏʀ <code>+{phone}</code> ʜᴀs ᴇɴᴅᴇᴅ.\n𝐈ғ ʏᴏᴜ ɴᴇᴇᴅ ᴀssɪsᴛᴀɴᴄᴇ, ᴘʟᴇᴀsᴇ ᴄᴏɴᴛᴀᴄᴛ 𝐒ᴜᴘᴘᴏʀᴛ.</blockquote>")
+            except: pass
 
 def register_buy(bot):
     @bot.on(events.NewMessage(pattern=r"(?i)^(🛒 𝐁ᴜʏ 𝐀ᴄᴄᴏᴜɴᴛ|🛒 Buy Account|📁 Buy Sessions)$"))
@@ -486,17 +498,18 @@ def register_buy(bot):
     async def cb_cancel_order(e):
         phone = e.pattern_match.group(1).decode()
         uid = e.sender_id
+        from database import is_admin
+        if not is_admin(uid):
+            return await e.answer("🚫 Cancellation is disabled for members. Please complete your login or contact Support.", alert=True)
+            
         if phone not in active_orders:
             return await e.answer("⚠️ Order already completed or expired.", alert=True)
             
         order = active_orders[phone]
-        if order['uid'] != uid:
-            return await e.answer("⚠️ Not your order.", alert=True)
-            
         if order.get('paid'):
             return await e.answer("⚠️ OTP was already sent! Order is completed.", alert=True)
             
-        # Cancel and refund instantly
+        # Admin cancel & refund
         active_orders.pop(phone)
         refund_amt = order['price']
         
@@ -505,8 +518,8 @@ def register_buy(bot):
                 await order['client'].disconnect()
         except: pass
             
-        async with get_user_lock(uid):
-            cur.execute("UPDATE users SET balance = balance + ? WHERE user_id=?", (refund_amt, uid))
+        async with get_user_lock(order['uid']):
+            cur.execute("UPDATE users SET balance = balance + ? WHERE user_id=?", (refund_amt, order['uid']))
             if not order.get('is_lzt'):
                 cur.execute("UPDATE stock SET available=1 WHERE phone=?", (phone,))
             db.commit()
