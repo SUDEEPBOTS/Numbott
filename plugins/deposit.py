@@ -96,10 +96,23 @@ def register_deposit(bot):
     @bot.on(events.NewMessage(func=lambda e: e.sender_id in deposit_input and deposit_input[e.sender_id]['step'] == 'wait_amt'))
     async def msg_wait_amt(e):
         uid = e.sender_id
-        text = e.text or ""
+        text = (e.text or "").strip()
+        
+        # Check if user sent photo/document/link/letters instead of pure numbers
+        if e.photo or e.document or e.media or not text.isdigit():
+            return await e.reply(f"<blockquote>{P_NO} <b>❌ 𝐈ɴᴠᴀʟɪᴅ 𝐀ᴍᴏᴜɴᴛ!</b>\n\n"
+                                 f"𝐏ʟᴇᴀsᴇ ᴇɴᴛᴇʀ a valid <b>numeric amount</b> (digits only, e.g. <code>50</code>, <code>100</code>, <code>500</code>).\n"
+                                 f"<i>𝐋ɪɴᴋs, sᴄʀᴇᴇɴsʜᴏᴛs, ʟᴇᴛᴛᴇʀs ᴏʀ sᴘᴇᴄɪᴀʟ ᴄʜᴀʀᴀᴄᴛᴇʀs ᴀʀᴇ ɴᴏᴛ ᴀʟʟᴏᴡᴇᴅ.</i></blockquote>",
+                                 buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
         try:
-            amt = int(re.sub(r'[^\d]', '', text))
-            if amt < 10: return await e.reply(f"{P_WARN} Minimum Deposit is ₹10.")
+            amt = int(text)
+            if amt < 10: 
+                return await e.reply(f"<blockquote>{P_WARN} <b>Minimum Deposit is {P_INR}10.</b>\n𝐏ʟᴇᴀsᴇ ᴇɴᴛᴇʀ {P_INR}10 ᴏʀ ᴍᴏʀᴇ:</blockquote>",
+                                     buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
+            if amt > 50000:
+                return await e.reply(f"<blockquote>{P_WARN} <b>Maximum Deposit is {P_INR}50,000.</b>\n𝐏ʟᴇᴀsᴇ ᴇɴᴛᴇʀ a smaller amount:</blockquote>",
+                                     buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
+                
             method = deposit_input[uid]['method']
             waiting_proof[uid] = {'amount': amt, 'method': method}
             deposit_input.pop(uid)
