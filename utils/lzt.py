@@ -268,9 +268,19 @@ class LZTClient:
                             if item_c != c_code.upper():
                                 continue
 
-                            # Mode spamblock check
+                            # Filter checks by mode
                             sb = item.get("telegram_spam_block")
                             if mode == 'nonspam' and sb == 1:
+                                continue
+
+                            has_mail = bool(item.get("mail") or item.get("email_type") in ("native", "domain", "temporary"))
+                            if mode == 'no_email' and has_mail:
+                                continue
+                            elif mode == 'with_email' and not has_mail:
+                                continue
+
+                            is_prem = bool(item.get("telegram_premium") or item.get("premium"))
+                            if mode == 'premium' and not is_prem:
                                 continue
 
                             price_rub = item.get("rub_price")
@@ -297,6 +307,11 @@ class LZTClient:
                                 
                             pwd_val = item.get("telegram_password_value") or item.get("telegram_password") or item.get("password") or "None"
                             has_pwd = bool(pwd_val and str(pwd_val) not in ("0", "None", "False"))
+                            
+                            if mode == 'no_2fa' and has_pwd:
+                                continue
+                            elif mode == 'with_2fa' and not has_pwd:
+                                continue
                             
                             results.append({
                                 "item_id": item.get("item_id"),

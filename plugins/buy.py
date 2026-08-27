@@ -77,28 +77,76 @@ async def search_countries_matching(query):
             for code, (name, _) in COUNTRY_CODES.items():
                 if name == c_name and dial_code == code:
                     matches.append((c_name, count))
-                    break
-            if (c_name, count) in matches:
-                continue
         lzt_code = get_lzt_code(c_name)
         if lzt_code and query_clean == lzt_code.lower():
             matches.append((c_name, count))
             continue
     return matches
 
+FILTERS_LIST = [
+    ("no_email", "🚫 𝐍ᴏ 𝐄ᴍᴀɪʟ 𝐁ᴏᴜɴᴅ (𝐃ɪʀᴇᴄᴛ 𝐎𝐓𝐏)", 5409320020058584473),
+    ("with_email", "📧 𝐄ᴍᴀɪʟ 𝐁ᴏᴜɴᴅ (𝐖ɪᴛʜ 𝐌ᴀɪʟ)", 5408995930416362034),
+    ("nonspam", "🟢 𝐍ᴏɴ-𝐒ᴘᴀᴍ (100% 𝐂ʟᴇᴀɴ)", 5409320020058584473),
+    ("spam", "🟡 𝐒ᴘᴀᴍ / 𝐔sᴇᴅ (𝐂ʜᴇᴀᴘ)", 5408995930416362034),
+    ("no_2fa", "🔓 𝐍ᴏ 2𝐅𝐀 (1-𝐂ʟɪᴄᴋ 𝐋ᴏɢɪɴ)", 5409320020058584473),
+    ("with_2fa", "🔒 2𝐅𝐀 𝐄ɴᴀʙʟᴇᴅ (𝐏ᴀss 𝐈ɴᴄʟᴜᴅᴇᴅ)", 5408995930416362034),
+    ("premium", "👑 𝐓ᴇʟᴇɢʀᴀᴍ 𝐏ʀᴇᴍɪᴜᴍ", 5408995930416362034),
+    ("aged", "🏛️ 𝐀ɢᴇᴅ / 𝐎ʟᴅ 𝐀ᴄᴄᴏᴜɴᴛs", 5408995930416362034),
+]
+
+FILTER_BADGES = {
+    "no_email": "🚫 𝐍ᴏ 𝐄ᴍᴀɪʟ 𝐁ᴏᴜɴᴅ (𝐃ɪʀᴇᴄᴛ 𝐎𝐓𝐏)",
+    "with_email": "📧 𝐄ᴍᴀɪʟ 𝐁ᴏᴜɴᴅ (𝐖ɪᴛʜ 𝐌ᴀɪʟ)",
+    "nonspam": "🟢 𝐍ᴏɴ-𝐒ᴘᴀᴍ (100% 𝐂ʟᴇᴀɴ)",
+    "spam": "🟡 𝐒ᴘᴀᴍ / 𝐔sᴇᴅ (𝐂ʜᴇᴀᴘ)",
+    "no_2fa": "🔓 𝐍ᴏ 2𝐅𝐀 (1-𝐂ʟɪᴄᴋ 𝐋ᴏɢɪɴ)",
+    "with_2fa": "🔒 2𝐅𝐀 𝐄ɴᴀʙʟᴇᴅ (𝐏ᴀss 𝐈ɴᴄʟᴜᴅᴇᴅ)",
+    "premium": "👑 𝐓ᴇʟᴇɢʀᴀᴍ 𝐏ʀᴇᴍɪᴜᴍ",
+    "aged": "🏛️ 𝐀ɢᴇᴅ / 𝐎ʟᴅ",
+    "bulk": "🌍 𝐒ᴛᴀɴᴅᴀʀᴅ"
+}
+
+async def show_filters_catalog(event, page=1):
+    limit = 4
+    offset = (page - 1) * limit
+    items = FILTERS_LIST[offset:offset+limit]
+    total = len(FILTERS_LIST)
+    total_pages = (total + limit - 1) // limit
+
+    msg = (f"<blockquote>🎯 <b>𝐒ᴇʟᴇᴄᴛ ᴀɴ 𝐀ᴄᴄᴏᴜɴᴛ 𝐅ɪʟᴛᴇʀ:</b> (𝐏ᴀɢᴇ {page}/{total_pages})\n\n"
+           f"<i>𝐂ʜᴏᴏsᴇ ᴀ sᴘᴇᴄɪғɪᴄ ᴀᴄᴄᴏᴜɴᴛ ᴛʏᴘᴇ ʙᴇʟᴏᴡ ᴛᴏ ʙʀᴏᴡsᴇ ᴄᴏᴜɴᴛʀɪᴇs:</i></blockquote>")
+    
+    btns = []
+    for f_id, label, icon in items:
+        if f_id == "aged":
+            btns.append([style_btn(label, b"by_years_menu", "primary", icon=icon)])
+        else:
+            btns.append([style_btn(label, f"pg_c|{f_id}|1", "primary", icon=icon)])
+
+    nav = []
+    if page > 1: nav.append(style_btn("⬅️ 𝐏ʀᴇᴠ", f"pg_filters|{page-1}", "primary", icon=6129627894349045589))
+    if offset + limit < total: nav.append(style_btn("𝐍ᴇxᴛ ➡️", f"pg_filters|{page+1}", "primary", icon=6129732880529628243))
+    if nav: btns.append(nav)
+
+    btns.append([style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐌ᴇɴᴜ", b"buy_menu_main", "danger", icon=6129812419028982717)])
+
+    if isinstance(event, events.CallbackQuery.Event):
+        try: await event.edit(msg, buttons=btns)
+        except MessageNotModifiedError: pass
+    else:
+        await event.respond(msg, buttons=btns)
+
 async def show_buy_menu(event):
     msg = (f"<blockquote>{PE_GIFT} <b>𝐒ᴇʟᴇᴄᴛ 𝐀ᴄᴄᴏᴜɴᴛ 𝐂ᴀᴛᴇɢᴏʀʏ:</b>\n\n"
            f"🔍 <b>𝐒ᴇᴀʀᴄʜ 𝐂ᴏᴜɴᴛʀʏ:</b> 𝐐ᴜɪᴄᴋ ʟᴏᴏᴋᴜᴘ ʙʏ ɴᴀᴍᴇ ᴏʀ ᴅɪᴀʟ ᴄᴏᴅᴇ (+91, +55...)\n"
-           f"🟢 <b>𝐍ᴏɴ-𝐒ᴘᴀᴍ / 𝐂ʟᴇᴀɴ:</b> 100% 𝐒ᴘᴀᴍʙʟᴏᴄᴋ-𝐅ʀᴇᴇ (𝐃𝐌 & 𝐏ᴇʀsᴏɴᴀʟ 𝐔sᴇ).\n"
-           f"🟡 <b>𝐒ᴘᴀᴍ / 𝐔sᴇᴅ (𝐂ʜᴇᴀᴘ):</b> 𝐁ᴜᴅɢᴇᴛ 𝐀ᴄᴄᴏᴜɴᴛs (𝐂ʜᴀɴɴᴇʟ 𝐉ᴏɪɴᴇʀs & 𝐌ᴇᴍʙᴇʀs).\n"
-           f"🏛️ <b>𝐎ʟᴅ / 𝐀ɢᴇᴅ 𝐀ᴄᴄᴏᴜɴᴛs:</b> 𝐅ɪʟᴛᴇʀ ʙʏ 𝐒ᴘᴇᴄɪғɪᴄ 𝐘ᴇᴀʀ (2025, 2024, 2023, 2022...).\n"
-           f"🌍 <b>𝐀ʟʟ 𝐂ᴏᴜɴᴛʀɪᴇs:</b> 𝐁ʀᴏᴡsᴇ 50+ ᴄᴏᴜɴᴛʀɪᴇs sᴛᴏᴄᴋ (𝐅ʀᴇsʜ & 𝐀ʟʟ).</blockquote>")
+           f"🎯 <b>𝐀ᴄᴄᴏᴜɴᴛ 𝐅ɪʟᴛᴇʀs:</b> 𝐍ᴏ-𝐄ᴍᴀɪʟ, 𝐄ᴍᴀɪʟ, 𝐍ᴏ-2𝐅𝐀, 𝐒ᴘᴀᴍ, 𝐏ʀᴇᴍɪᴜᴍ...\n"
+           f"🌍 <b>𝐀ʟʟ 𝐂ᴏᴜɴᴛʀɪᴇs:</b> 𝐁ʀᴏᴡsᴇ 50+ ᴄᴏᴜɴᴛʀɪᴇs sᴛᴏᴄᴋ (𝐅ʀᴇsʜ & 𝐀ʟʟ).\n"
+           f"🏛️ <b>𝐎ʟᴅ / 𝐀ɢᴇᴅ 𝐀ᴄᴄᴏᴜɴᴛs:</b> 𝐅ɪʟᴛᴇʀ ʙʏ 𝐒ᴘᴇᴄɪғɪᴄ 𝐘ᴇᴀʀ (2025, 2024, 2023...).</blockquote>")
     btns = [
         [style_btn("🔍 𝐒ᴇᴀʀᴄʜ 𝐂ᴏᴜɴᴛʀʏ", b"search_country_btn", "primary", icon=5409098988156629257)],
-        [style_btn("🟢 𝐍ᴏɴ-𝐒ᴘᴀᴍ / 𝐂ʟᴇᴀɴ 𝐀ᴄᴄᴏᴜɴᴛs", b"pg_c|nonspam|1", "success", icon=5409320020058584473)],
-        [style_btn("🟡 𝐒ᴘᴀᴍ / 𝐔sᴇᴅ 𝐀ᴄᴄᴏᴜɴᴛs (𝐂ʜᴇᴀᴘ)", b"pg_c|spam|1", "primary", icon=5408995930416362034)],
-        [style_btn("🏛️ 𝐎ʟᴅ / 𝐀ɢᴇᴅ 𝐀ᴄᴄᴏᴜɴᴛs (ʙʏ 𝐘ᴇᴀʀ)", b"by_years_menu", "success", icon=5408995930416362034)],
-        [style_btn("🌍 𝐀ʟʟ 𝐂ᴏᴜɴᴛʀɪᴇs (𝐅ʀᴇsʜ & 𝐀ʟʟ)", b"pg_c|bulk|1", "primary", icon=6154249597532248059)]
+        [style_btn("🎯 𝐀ᴄᴄᴏᴜɴᴛ 𝐅ɪʟᴛᴇʀs (𝐄ᴍᴀɪʟ/2𝐅𝐀/𝐒ᴘᴀᴍ...)", b"pg_filters|1", "success", icon=5409320020058584473)],
+        [style_btn("🌍 𝐀ʟʟ 𝐂ᴏᴜɴᴛʀɪᴇs (𝐅ʀᴇsʜ & 𝐀ʟʟ)", b"pg_c|bulk|1", "primary", icon=6154249597532248059)],
+        [style_btn("🏛️ 𝐎ʟᴅ / 𝐀ɢᴇᴅ 𝐀ᴄᴄᴏᴜɴᴛs (ʙʏ 𝐘ᴇᴀʀ)", b"by_years_menu", "primary", icon=5408995930416362034)]
     ]
     if isinstance(event, events.CallbackQuery.Event):
         try: await event.edit(msg, buttons=btns)
@@ -177,16 +225,15 @@ async def show_countries(event, mode, page):
     if offset + limit < total: nav.append(style_btn("𝐍ᴇxᴛ ➡️", f"pg_c|{mode}|{page+1}", "primary", icon=6129732880529628243))
     if nav: f_btns.append(nav)
     
-    f_btns.append([
-        style_btn("🏛️ 𝐁ᴜʏ ʙʏ 𝐘ᴇᴀʀ (𝐎ʟᴅ 𝐀ᴄᴄ)", b"by_years_menu", "success", icon=5408995930416362034),
-        style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐌ᴇɴᴜ", b"buy_menu_main", "danger", icon=6129812419028982717)
-    ])
+    back_row = []
+    if mode != 'bulk':
+        back_row.append(style_btn("🎯 𝐁ᴀᴄᴋ ᴛᴏ 𝐅ɪʟᴛᴇʀs", b"pg_filters|1", "primary", icon=5409320020058584473))
+    back_row.append(style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐌ᴇɴᴜ", b"buy_menu_main", "danger", icon=6129812419028982717))
+    f_btns.append(back_row)
     
     total_pages = (total + limit - 1) // limit
-    if mode == 'nonspam':
-        cat_header = "🟢 <b>𝐒ᴇʟᴇᴄᴛ 𝐂ᴏᴜɴᴛʀʏ (𝐍ᴏɴ-𝐒ᴘᴀᴍ / 𝐂ʟᴇᴀɴ):</b>"
-    elif mode == 'spam':
-        cat_header = "🟡 <b>𝐒ᴇʟᴇᴄᴛ 𝐂ᴏᴜɴᴛʀʏ (𝐒ᴘᴀᴍ / 𝐔sᴇᴅ - 𝐂ʜᴇᴀᴘ):</b>"
+    if mode in FILTER_BADGES and mode != 'bulk':
+        cat_header = f"🎯 <b>𝐒ᴇʟᴇᴄᴛ 𝐂ᴏᴜɴᴛʀʏ ({FILTER_BADGES[mode]}):</b>"
     else:
         cat_header = f"{PE_LOCATION} <b>𝐒ᴇʟᴇᴄᴛ ᴀ 𝐂ᴏᴜɴᴛʀʏ:</b>"
 
@@ -206,6 +253,10 @@ async def show_years(event, mode, country):
             rows = cur.execute("SELECT account_year, COUNT(*), price FROM stock WHERE country_name=? AND available=1 AND (category='Spam' OR category='spam') GROUP BY account_year, price", (country,)).fetchall()
         elif mode == 'nonspam':
             rows = cur.execute("SELECT account_year, COUNT(*), price FROM stock WHERE country_name=? AND available=1 AND (category!='Spam' AND category!='spam') GROUP BY account_year, price", (country,)).fetchall()
+        elif mode == 'no_2fa':
+            rows = cur.execute("SELECT account_year, COUNT(*), price FROM stock WHERE country_name=? AND available=1 AND (twofa='None' OR twofa IS NULL OR twofa='') GROUP BY account_year, price", (country,)).fetchall()
+        elif mode == 'with_2fa':
+            rows = cur.execute("SELECT account_year, COUNT(*), price FROM stock WHERE country_name=? AND available=1 AND (twofa!='None' AND twofa IS NOT NULL AND twofa!='') GROUP BY account_year, price", (country,)).fetchall()
         else:
             rows = cur.execute("SELECT account_year, COUNT(*), price FROM stock WHERE country_name=? AND available=1 GROUP BY account_year, price", (country,)).fetchall()
             
@@ -248,11 +299,16 @@ async def show_years(event, mode, country):
         badge = YEAR_BADGES.get(int(y) if str(y).isdigit() else y, f"📅 {y}")
         cnt_text = f"({count} left)" if isinstance(count, int) else f"({count})"
         btns.append([style_btn(f"{badge} — {P_INR}{price} {cnt_text}", f"by|{mode}|{country}|{y}|{price}", "primary", icon=5408995930416362034)])
-    btns.append([style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐂ᴏᴜɴᴛʀɪᴇs", f"pg_c|{mode}|1", "danger", icon=6129812419028982717)])
     
-    if mode == 'nonspam': cat_label = " (🟢 𝐍ᴏɴ-𝐒ᴘᴀᴍ)"
-    elif mode == 'spam': cat_label = " (🟡 𝐒ᴘᴀᴍ / 𝐔sᴇᴅ)"
-    else: cat_label = ""
+    if mode != 'bulk':
+        btns.append([style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐂ᴏᴜɴᴛʀɪᴇs", f"pg_c|{mode}|1", "danger", icon=6129812419028982717)])
+    else:
+        btns.append([style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐂ᴏᴜɴᴛʀɪᴇs", "pg_c|bulk|1", "danger", icon=6129812419028982717)])
+    
+    if mode in FILTER_BADGES and mode != 'bulk':
+        cat_label = f" ({FILTER_BADGES[mode]})"
+    else:
+        cat_label = ""
     
     await event.edit(f"<blockquote>{flag} <b>𝐒ᴇʟᴇᴄᴛ 𝐘ᴇᴀʀ & 𝐏ʀɪᴄᴇ ғᴏʀ {country}{cat_label}:</b></blockquote>", buttons=btns)
 
@@ -294,6 +350,10 @@ async def process_purchase(event, mode, country, year, price_str):
             local_row = cur.execute("SELECT phone, session_file, twofa FROM stock WHERE country_name=? AND account_year=? AND available=1 AND (category='Spam' OR category='spam') LIMIT 1", (country, int(year))).fetchone()
         elif mode == 'nonspam':
             local_row = cur.execute("SELECT phone, session_file, twofa FROM stock WHERE country_name=? AND account_year=? AND available=1 AND (category!='Spam' AND category!='spam') LIMIT 1", (country, int(year))).fetchone()
+        elif mode == 'no_2fa':
+            local_row = cur.execute("SELECT phone, session_file, twofa FROM stock WHERE country_name=? AND account_year=? AND available=1 AND (twofa='None' OR twofa IS NULL OR twofa='') LIMIT 1", (country, int(year))).fetchone()
+        elif mode == 'with_2fa':
+            local_row = cur.execute("SELECT phone, session_file, twofa FROM stock WHERE country_name=? AND account_year=? AND available=1 AND (twofa!='None' AND twofa IS NOT NULL AND twofa!='') LIMIT 1", (country, int(year))).fetchone()
         else:
             local_row = cur.execute("SELECT phone, session_file, twofa FROM stock WHERE country_name=? AND account_year=? AND available=1 LIMIT 1", (country, int(year))).fetchone()
         
@@ -534,6 +594,12 @@ def register_buy(bot):
     @bot.on(events.CallbackQuery(pattern=b"^by_years_menu$"))
     async def cb_by_years_menu(e):
         await show_years_catalog(e)
+
+    @bot.on(events.CallbackQuery(pattern=r"^pg_filters\|(\d+)$"))
+    async def cb_pg_filters(e):
+        p = e.pattern_match
+        page = int(p.group(1).decode())
+        await show_filters_catalog(e, page)
 
     @bot.on(events.CallbackQuery(pattern=r"^c_by_yr\|(\d+)\|(\d+)$"))
     async def cb_c_by_yr(e):

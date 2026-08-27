@@ -261,6 +261,8 @@ def get_panel_price(country, year, lzt_price_rub=0, mode='bulk'):
     final_p = max(int(calculated), 25)
     if mode == 'spam':
         return max(int(final_p * 0.7), 15)
+    elif mode == 'premium':
+        return final_p + 150
     return final_p
 
 def get_fsub_status():
