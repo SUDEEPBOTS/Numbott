@@ -87,11 +87,12 @@ def register_panels(bot):
         msg = (f"<blockquote>{PE_CHECK} <b>🎉 𝐏ᴜʀᴄʜᴀsᴇ 𝐒ᴜᴄᴄᴇssғᴜʟ!</b>\n\n"
                f"🌌 <b>𝐏ᴀɴᴇʟ:</b> <b>{html.escape(title)}</b>\n"
                f"💰 <b>𝐀ᴍᴏᴜɴᴛ 𝐏ᴀɪᴅ:</b> <code>{P_INR}{price}</code>\n\n"
-               f"🔗 <b>𝐏ᴀɴᴇʟ 𝐀ᴄᴄᴇss & 𝐃ᴇᴛᴀɪʟs:</b>\n"
+               f"🔗 <b>𝐏ᴀɴᴇʟ 𝐖ᴇʙsɪᴛᴇ 𝐔𝐑𝐋:</b>\n"
                f"<code>{html.escape(panel_link)}</code>\n\n"
-               f"<i>𝐓ʜᴀɴᴋ ʏᴏᴜ ғᴏʀ ʏᴏᴜʀ ᴘᴜʀᴄʜᴀsᴇ!</i></blockquote>")
+               f"<i>𝐕ɪsɪᴛ ᴛʜᴇ ᴘᴀɴᴇʟ ᴜʀʟ ᴛᴏ ʀᴇɢɪsᴛᴇʀ ᴀɴᴅ ᴜsᴇ ʏᴏᴜʀ ᴘᴀɴᴇʟ!</i></blockquote>")
                
         btns = [
+            [Button.url("🌐 𝐎ᴘᴇɴ 𝐏ᴀɴᴇʟ 𝐖ᴇʙsɪᴛᴇ ↗️", panel_link)],
             [style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐒ᴛᴏʀᴇ", b"panels_menu", "primary")]
         ]
         try: await e.edit(msg, buttons=btns)

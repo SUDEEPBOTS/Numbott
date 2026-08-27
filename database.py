@@ -416,8 +416,8 @@ def get_panels():
     rows = cur.execute("SELECT id, title, description, price, panel_content, available FROM panels WHERE available=1").fetchall()
     if not rows:
         defaults = [
-            ("VIP SMM Panel (Server 1)", "High-speed VIP SMM reseller panel with instant API access and auto balance top-up.", 399.0, "🔗 Panel URL: https://fathersmm.com\n🔑 API Key: 7693898241322ddfeea23dca2e59fc88\n⚡ Currency: INR\n📖 Guide: Connect this API key in your bot or SMM software for instant ordering."),
-            ("Budget SMM Panel (Server 2 - Cheap)", "Cheapest global SMM panel with over 1500+ bulk services and fast processing.", 399.0, "🔗 Panel URL: https://best-smm.com\n🔑 API Key: cc77a5fe7218f0bc0c38e2a7f768c77f\n⚡ Currency: USD\n📖 Guide: Connect this API key in your bot or SMM software for lowest wholesale rates.")
+            ("VIP SMM Panel (Server 1)", "High-speed VIP SMM reseller panel with instant order delivery and auto balance top-up.", 399.0, "https://fathersmm.com"),
+            ("Budget SMM Panel (Server 2 - Cheap)", "Cheapest global SMM panel with over 1500+ bulk services and lowest wholesale rates.", 399.0, "https://best-smm.com")
         ]
         for t, d, p, f in defaults:
             cur.execute("INSERT INTO panels (title, description, price, panel_content) VALUES (?,?,?,?)", (t, d, p, f))
