@@ -82,8 +82,10 @@ def register_start(bot):
                 if start_param.startswith("ref_"):
                     ref = start_param.replace("ref_", "")
                     if ref.isdigit() and int(ref) != uid and is_new:
-                        cur.execute("UPDATE users SET referred_by=? WHERE user_id=? AND referred_by IS NULL", (int(ref), uid))
-                        db.commit()
+                        ref_exists = cur.execute("SELECT 1 FROM users WHERE user_id=?", (int(ref),)).fetchone()
+                        if ref_exists:
+                            cur.execute("UPDATE users SET referred_by=? WHERE user_id=? AND referred_by IS NULL", (int(ref), uid))
+                            db.commit()
 
             PFP_URL = "assets/image.jpg"
             is_joined = await check_channel_joined(bot, uid, is_admin)
