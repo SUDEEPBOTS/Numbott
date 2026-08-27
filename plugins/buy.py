@@ -185,7 +185,8 @@ async def show_buy_menu(event):
         ],
         [style_btn("🎯 𝐌ᴏʀᴇ 𝐀ᴄᴄᴏᴜɴᴛ 𝐅ɪʟᴛᴇʀs (𝐒ᴛᴀʀs/2𝐅𝐀...)", b"pg_filters|1", "success", icon=5409320020058584473)],
         [style_btn("🌍 𝐀ʟʟ 𝐂ᴏᴜɴᴛʀɪᴇs (𝐅ʀᴇsʜ & 𝐀ʟʟ)", b"pg_c|bulk|1", "primary", icon=6154249597532248059)],
-        [style_btn("🏛️ 𝐎ʟᴅ / 𝐀ɢᴇᴅ 𝐀ᴄᴄᴏᴜɴᴛs (ʙʏ 𝐘ᴇᴀʀ)", b"by_years_menu", "primary", icon=5408995930416362034)]
+        [style_btn("🏛️ 𝐎ʟᴅ / 𝐀ɢᴇᴅ 𝐀ᴄᴄᴏᴜɴᴛs (ʙʏ 𝐘ᴇᴀʀ)", b"by_years_menu", "primary", icon=5408995930416362034)],
+        [style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐃ᴀsʜʙᴏᴀʀᴅ", b"dashboard_main", "danger", icon=6129812419028982717)]
     ]
     if isinstance(event, events.CallbackQuery.Event):
         try: await event.edit(msg, buttons=btns)
@@ -621,6 +622,10 @@ async def auto_otp_task(phone):
 def register_buy(bot):
     @bot.on(events.NewMessage(pattern=r"(?i)^(🛒 𝐁ᴜʏ 𝐀ᴄᴄᴏᴜɴᴛ|🛒 Buy Account|📁 Buy Sessions)$"))
     async def msg_buy(e):
+        await show_buy_menu(e)
+
+    @bot.on(events.CallbackQuery(pattern=r"^(open_buy_categories|open_buy_menu|buy_categories)$"))
+    async def cb_open_buy_categories(e):
         await show_buy_menu(e)
 
     @bot.on(events.CallbackQuery(pattern=b"^buy_menu_main$"))

@@ -41,7 +41,7 @@ async def send_main_menu(bot, event, uid):
            f"<blockquote>✈️ <b>𝐒ᴜᴘᴘᴏʀᴛ :</b> <a href='{support_url}'>{support_handle}</a></blockquote>")
            
     buttons = [
-        [style_btn("📲 𝐁ᴜʏ 𝐀ᴄᴄᴏᴜɴᴛ", b"buy_menu_main", "success", icon=5440627033111557670)],
+        [style_btn("📲 𝐁ᴜʏ 𝐀ᴄᴄᴏᴜɴᴛ", b"open_buy_categories", "success", icon=5440627033111557670)],
         [style_btn("🚀 𝐒ᴏᴄɪᴀʟ ᴍᴇᴅɪᴀ sᴇʀᴠɪᴄᴇs", b"smm_menu_main", "success", icon=5408995930416362034)],
         [style_btn("🛒 𝐁ᴜʏ 𝐒ᴏᴜʀᴄᴇ 𝐂ᴏᴅᴇs", b"src_code_menu", "success", icon=5409320020058584473)],
         [style_btn("🛒 𝐁ᴜʏ 𝐏ᴀɴᴇʟs", b"panels_menu", "success", icon=5409098988156629257)],
@@ -55,6 +55,10 @@ async def send_main_menu(bot, event, uid):
 
 
 def register_start(bot):
+    @bot.on(events.CallbackQuery(pattern=r"^(dashboard_main|back_to_dashboard|buy_menu_main)$"))
+    async def cb_dashboard_main(e):
+        await send_main_menu(bot, e, e.sender_id)
+
     @bot.on(events.NewMessage(pattern=r"(?i)^(/start|🏠 𝐒ᴛᴀʀᴛ)"))
     async def handle_start(e):
         try:
