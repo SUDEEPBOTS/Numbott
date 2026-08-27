@@ -37,7 +37,7 @@ async def deposit_menu(event):
 async def manual_deposit_init(event, method):
     uid = event.sender_id
     deposit_input[uid] = {'step': 'wait_amt', 'method': method}
-    await event.edit(f"{P_MONEY} <b>𝐄ɴᴛᴇʀ 𝐃ᴇᴘᴏsɪᴛ 𝐀ᴍᴏᴜɴᴛ (ɪɴ {P_INR}):</b>\n\n<i>𝐌ɪɴɪᴍᴜᴍ ᴅᴇᴘᴏsɪᴛ ɪs {P_INR}10.</i>", buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
+    await event.edit(f"{P_MONEY} <b>𝐄ɴᴛᴇʀ 𝐃ᴇᴘᴏsɪᴛ 𝐀ᴍᴏᴜɴᴛ (ɪɴ {P_INR}):</b>\n\n<i>𝐌ɪɴɪᴍᴜᴍ ᴅᴇᴘᴏsɪᴛ ɪs {P_INR}1.</i>", buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
 
 async def process_referral_bonus(user_id, amt):
     try:
@@ -106,8 +106,8 @@ def register_deposit(bot):
                                  buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
         try:
             amt = int(text)
-            if amt < 10: 
-                return await e.reply(f"<blockquote>{P_WARN} <b>Minimum Deposit is {P_INR}10.</b>\n𝐏ʟᴇᴀsᴇ ᴇɴᴛᴇʀ {P_INR}10 ᴏʀ ᴍᴏʀᴇ:</blockquote>",
+            if amt < 1: 
+                return await e.reply(f"<blockquote>{P_WARN} <b>Minimum Deposit is {P_INR}1.</b>\n𝐏ʟᴇᴀsᴇ ᴇɴᴛᴇʀ {P_INR}1 ᴏʀ ᴍᴏʀᴇ:</blockquote>",
                                      buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
             if amt > 50000:
                 return await e.reply(f"<blockquote>{P_WARN} <b>Maximum Deposit is {P_INR}50,000.</b>\n𝐏ʟᴇᴀsᴇ ᴇɴᴛᴇʀ a smaller amount:</blockquote>",
