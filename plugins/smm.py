@@ -16,17 +16,31 @@ from utils.smm_client import (
 # User state dictionary for SMM orders
 smm_order_state = {}
 
-async def show_smm_main(event, server=1):
+# ── Step 1: Select Server ──
+async def show_smm_servers(event):
+    btns = []
+    for s_id, s_info in SMM_SERVERS.items():
+        icon = "🟢" if s_id == 1 else "🟡"
+        btns.append([style_btn(f"{icon} {s_info['name']}", f"smm_srv|{s_id}", "primary")])
+        
+    btns.append([style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐌ᴇɴᴜ", b"buy_menu_main", "danger", icon=6129812419028982717)])
+    
+    msg = (f"<blockquote>🚀 <b>𝐒ᴏᴄɪᴀʟ 𝐌ᴇᴅɪᴀ 𝐒ᴇʀᴠɪᴄᴇs (𝐒𝐌𝐌)</b>\n\n"
+           f"⚡ <b>𝐅ᴀsᴛ & 𝐈ɴsᴛᴀɴᴛ 𝐃ᴇʟɪᴠᴇʀʏ</b> ғᴏʀ ᴀʟʟ ᴍᴀᴊᴏʀ ᴘʟᴀᴛғᴏʀᴍs.\n\n"
+           f"👇 <b>𝐏ʟᴇᴀsᴇ sᴇʟᴇᴄᴛ ᴀ 𝐒ᴇʀᴠᴇʀ ʙᴇʟᴏᴡ:</b></blockquote>")
+           
+    if isinstance(event, events.CallbackQuery.Event):
+        try: await event.edit(msg, buttons=btns)
+        except MessageNotModifiedError: pass
+    else:
+        await event.respond(msg, buttons=btns)
+
+# ── Step 2: Select Platform (Telegram, WhatsApp, Instagram, etc.) ──
+async def show_smm_platforms_menu(event, server=1):
     srv = SMM_SERVERS.get(server, SMM_SERVERS[1])
     platforms = await get_smm_platforms(server)
     
-    server_switch_btns = []
-    for s_id, s_info in SMM_SERVERS.items():
-        prefix = "🟢" if s_id == server else "⚪"
-        server_switch_btns.append(style_btn(f"{prefix} {s_info['name']}", f"smm_srv|{s_id}", "primary"))
-    
-    btns = [server_switch_btns]
-    
+    btns = []
     plat_row = []
     for p in platforms:
         icon = PLATFORM_ICONS.get(p, '🌐')
@@ -37,19 +51,16 @@ async def show_smm_main(event, server=1):
     if plat_row:
         btns.append(plat_row)
         
-    btns.append([style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐌ᴇɴᴜ", b"buy_menu_main", "danger", icon=6129812419028982717)])
+    btns.append([style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐒ᴇʀᴠᴇʀs", b"smm_menu_main", "danger", icon=6129812419028982717)])
     
-    msg = (f"<blockquote>🚀 <b>𝐒ᴏᴄɪᴀʟ 𝐌ᴇᴅɪᴀ 𝐒ᴇʀᴠɪᴄᴇs (𝐒𝐌𝐌)</b>\n\n"
-           f"🌐 <b>𝐀ᴄᴛɪᴠᴇ 𝐒ᴇʀᴠᴇʀ:</b> <code>{srv['name']}</code>\n"
-           f"⚡ <b>𝐅ᴀsᴛ & 𝐈ɴsᴛᴀɴᴛ 𝐃ᴇʟɪᴠᴇʀʏ</b> ғᴏʀ ᴀʟʟ ᴍᴀᴊᴏʀ ᴘʟᴀᴛғᴏʀᴍs.\n\n"
-           f"👇 <b>𝐏ʟᴇᴀsᴇ sᴇʟᴇᴄᴛ ᴀ 𝐏ʟᴀᴛғᴏʀᴍ ʙᴇʟᴏᴡ:</b></blockquote>")
+    msg = (f"<blockquote>🌐 <b>{srv['name']} — 𝐒ᴇʟᴇᴄᴛ 𝐏ʟᴀᴛғᴏʀᴍ</b>\n\n"
+           f"⚡ <b>𝐀ʟʟ 𝐒ᴏᴄɪᴀʟ 𝐌ᴇᴅɪᴀ 𝐏ʟᴀᴛғᴏʀᴍs 𝐀ᴠᴀɪʟᴀʙʟᴇ</b>\n\n"
+           f"👇 <b>𝐏ʟᴇᴀsᴇ ᴄʜᴏᴏsᴇ ᴀ ᴘʟᴀᴛғᴏʀᴍ ᴛᴏ ᴄᴏɴᴛɪɴᴜᴇ:</b></blockquote>")
            
-    if isinstance(event, events.CallbackQuery.Event):
-        try: await event.edit(msg, buttons=btns)
-        except MessageNotModifiedError: pass
-    else:
-        await event.respond(msg, buttons=btns)
+    try: await event.edit(msg, buttons=btns)
+    except MessageNotModifiedError: pass
 
+# ── Step 3: Select Category (under Platform) with Pagination ──
 async def show_platform_categories(event, server, platform, page):
     limit = 6
     offset = (page - 1) * limit
@@ -65,7 +76,6 @@ async def show_platform_categories(event, server, platform, page):
         real_idx = offset + i
         c_name = c_data['name']
         c_count = c_data['count']
-        # Shorten category name for button
         short_name = c_name[:28] + '..' if len(c_name) > 30 else c_name
         btns.append([style_btn(f"📁 {short_name} ({c_count})", f"smm_cat|{server}|{platform}|{real_idx}|1", "primary")])
         
@@ -79,7 +89,7 @@ async def show_platform_categories(event, server, platform, page):
         
     btns.append([style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐏ʟᴀᴛғᴏʀᴍs", f"smm_srv|{server}", "danger", icon=6129812419028982717)])
     
-    total_pages = (total + limit - 1) // limit
+    total_pages = max(1, (total + limit - 1) // limit)
     icon = PLATFORM_ICONS.get(platform, '🌐')
     msg = (f"<blockquote>{icon} <b>𝐒ᴇʟᴇᴄᴛ 𝐂ᴀᴛᴇɢᴏʀʏ ғᴏʀ {platform}:</b>\n\n"
            f"📄 <b>𝐏ᴀɢᴇ:</b> <code>{page}/{total_pages}</code> (𝐓ᴏᴛᴀʟ: {total} ᴄᴀᴛᴇɢᴏʀɪᴇs)</blockquote>")
@@ -87,6 +97,7 @@ async def show_platform_categories(event, server, platform, page):
     try: await event.edit(msg, buttons=btns)
     except MessageNotModifiedError: pass
 
+# ── Step 4: Select Service (under Category) with Pagination ──
 async def show_category_services(event, server, platform, cat_idx, page):
     cats = await get_categories_for_platform(platform, server)
     if cat_idx >= len(cats):
@@ -126,6 +137,7 @@ async def show_category_services(event, server, platform, cat_idx, page):
     try: await event.edit(msg, buttons=btns)
     except MessageNotModifiedError: pass
 
+# ── Step 5: Service Overview Card ──
 async def show_service_card(event, server, platform, cat_idx, service_id):
     s = await get_smm_service_details(service_id, server)
     if not s:
@@ -155,12 +167,12 @@ async def show_service_card(event, server, platform, cat_idx, service_id):
 def register_smm(bot):
     @bot.on(events.CallbackQuery(pattern=b"^smm_menu_main$"))
     async def cb_smm_main(e):
-        await show_smm_main(e, server=1)
+        await show_smm_servers(e)
         
     @bot.on(events.CallbackQuery(pattern=r"^smm_srv\|(\d+)$"))
     async def cb_smm_srv(e):
         srv_id = int(e.pattern_match.group(1).decode())
-        await show_smm_main(e, server=srv_id)
+        await show_smm_platforms_menu(e, server=srv_id)
         
     @bot.on(events.CallbackQuery(pattern=r"^smm_plat\|(\d+)\|([^|]+)\|(\d+)$"))
     async def cb_smm_plat(e):
@@ -228,7 +240,7 @@ def register_smm(bot):
             service_id = state.get('service_id')
             await show_service_card(e, server, platform, cat_idx, service_id)
         else:
-            await show_smm_main(e)
+            await show_smm_servers(e)
 
     @bot.on(events.NewMessage(func=lambda e: e.sender_id in smm_order_state and not e.text.startswith('/')))
     async def msg_smm_order_inputs(e):
