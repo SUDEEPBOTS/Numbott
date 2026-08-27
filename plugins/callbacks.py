@@ -87,7 +87,33 @@ async def send_stock_page(event, page=1):
     else:
         await event.respond(msg, buttons=btns)
 
+async def show_more_menu(event):
+    pct_row = cur.execute("SELECT value FROM settings WHERE key='ref_percent'").fetchone()
+    pct = pct_row[0] if pct_row else "3"
+    
+    from config import TERMS_URL
+    from database import get_support_url
+    
+    msg = (f"<blockquote>💬 <b>𝐌ᴏʀᴇ 𝐎ᴘᴛɪᴏɴs & 𝐓ᴏᴏʟs</b>\n\n"
+           f"🎁 <b>𝐑ᴇғᴇʀ & 𝐄ᴀʀɴ:</b> 𝐄ᴀʀɴ {pct}% ᴏғ ᴀʟʟ ғʀɪᴇɴᴅ ᴅᴇᴘᴏsɪᴛs!\n"
+           f"📊 <b>𝐋ɪᴠᴇ 𝐒ᴛᴏᴄᴋ:</b> 𝐕ɪᴇᴡ ᴀᴠᴀɪʟᴀʙʟᴇ ᴀᴄᴄᴏᴜɴᴛs ᴀᴄʀᴏss ᴀʟʟ ᴄᴏᴜɴᴛʀɪᴇs.\n"
+           f"📜 <b>𝐓ᴇʀᴍs & 𝐑ᴜʟᴇs:</b> 𝐑ᴇᴀᴅ ᴏᴜʀ sᴇʀᴠɪᴄᴇ ᴛᴇʀᴍs.</blockquote>")
+           
+    btns = [
+        [style_btn("🎁 Refer & Earn", b"view_referrals", "success", icon=5354889508674360491)],
+        [style_btn("📊 Live Stock", b"stk_pg|1", "primary", icon=6129627894349045589)],
+        [Button.url("📜 Terms & Conditions", TERMS_URL)],
+        [Button.url("📩 Support", get_support_url())],
+        [style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐌ᴇɴᴜ", b"buy_menu_main", "danger", icon=6129812419028982717)]
+    ]
+    try: await event.edit(msg, buttons=btns)
+    except MessageNotModifiedError: pass
+
 def register_callbacks(bot):
+    @bot.on(events.CallbackQuery(pattern=b"^more_menu$"))
+    async def cb_more_menu(e):
+        await show_more_menu(e)
+
     @bot.on(events.CallbackQuery(pattern=r"^stk_pg\|(\d+)$"))
     async def cb_stk_pg(e):
         page = int(e.pattern_match.group(1).decode())
@@ -96,6 +122,7 @@ def register_callbacks(bot):
     @bot.on(events.NewMessage(pattern=r"(?i)^(📊 𝐒ᴛᴏᴄᴋ|📊 Stock)$"))
     async def msg_stock(e):
         await send_stock_page(e, 1)
+
     @bot.on(events.CallbackQuery(pattern=b"^tc_accept$"))
     async def cb_tc_accept(e):
         uid = e.sender_id

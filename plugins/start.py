@@ -1,29 +1,64 @@
-from telethon import events, types
+import html
+from telethon import events, types, Button
 from telethon.errors import MessageNotModifiedError
-from database import cur, db, ensure_user, is_user_banned, is_bot_online, is_admin
-from utils.keyboards import get_persistent_menu, get_terms_buttons, get_join_buttons
+from database import cur, db, ensure_user, is_user_banned, is_bot_online, is_admin, get_support_url, get_start_image_url
+from utils.keyboards import get_persistent_menu, get_terms_buttons, get_join_buttons, style_btn, style_url
 from utils.helpers import check_channel_joined
-from config import PE_FLOWER, PE_LOCATION, P_OFF, PE_HEART, PE_GIFT, P_GIFT, P_GLOBE, P_INR
+from config import PE_FLOWER, PE_LOCATION, P_OFF, P_INR, JOIN_URLS, TERMS_URL
 from utils.states import session_buy_state, deposit_input
 
 async def send_main_menu(bot, event, uid):
     me = await bot.get_me()
-    pct_row = cur.execute("SELECT value FROM settings WHERE key='ref_percent'").fetchone()
-    pct = pct_row[0] if pct_row else "3"
-    bal_row = cur.execute("SELECT balance FROM users WHERE user_id=?", (uid,)).fetchone()
-    bal = bal_row[0] if bal_row else 0
-    bot_username = me.username or ""
-    PFP_URL = "assets/image.jpg"
-    msg = (f"<blockquote>{PE_HEART} <b>𝐖ᴇʟᴄᴏᴍᴇ ᴛᴏ 𝐅ʀᴇsʜ 𝐓ɢ 𝐒ᴛᴏʀᴇ!</b></blockquote>\n\n"
-           f"<blockquote>{PE_GIFT} <b>𝐏ʀᴇᴍɪᴜᴍ sᴇʀᴠɪᴄᴇs:</b> 𝐁ᴜʏ ᴀᴄᴄᴏᴜɴᴛs, sᴇssɪᴏɴs, ᴀɴᴅ ᴛᴏᴘ ᴜᴘ ɪɴsᴛᴀɴᴛʟʏ.</blockquote>\n\n"
-           f"<blockquote>{P_GIFT} <b>𝐑ᴇғᴇʀ & 𝐄ᴀʀɴ:</b>\n𝐈ɴᴠɪᴛᴇ ғʀɪᴇɴᴅs ᴀɴᴅ ᴇᴀʀɴ {pct}% ᴏғ ᴛʜᴇɪʀ ᴅᴇᴘᴏsɪᴛs!\n"
-           f"{P_GLOBE} <code>https://t.me/{bot_username}?start=ref_{uid}</code></blockquote>\n\n"
-           f"<blockquote>💰 <b>𝐁ᴀʟᴀɴᴄᴇ:</b> {P_INR}{bal}</blockquote>\n\n"
-           f"<blockquote>👨‍💻 <b>𝐃ᴇᴠᴇʟᴏᴘᴇʀ:</b> <a href='https://t.me/sivamXpruff'>𝁘𝐌꧊᱂ 𝁛 ꪜᛧƖƖ𝛂ᛧ𝝶 𝁤𝁛𝁑𝆆𝆅🌾.</a></blockquote>")
+    bot_name = me.first_name or "Store Bot"
     
-    f = await bot.upload_file(PFP_URL)
-    media = types.InputMediaUploadedPhoto(file=f)
-    await bot.send_file(uid, media, caption=msg, buttons=get_persistent_menu(uid))
+    bal_row = cur.execute("SELECT balance FROM users WHERE user_id=?", (uid,)).fetchone()
+    bal = float(bal_row[0]) if bal_row and bal_row[0] is not None else 0.0
+    
+    try:
+        user_entity = await bot.get_entity(uid)
+        first_name = user_entity.first_name or "User"
+        username = f"@{user_entity.username}" if user_entity.username else "None"
+    except Exception:
+        first_name = "User"
+        username = "None"
+        
+    start_img = get_start_image_url()
+    support_url = get_support_url()
+    support_handle = f"@{support_url.split('/')[-1]}" if support_url.startswith("https://t.me/") else support_url
+    
+    update_link = JOIN_URLS[0] if JOIN_URLS else support_url
+    feedback_link = support_url
+    
+    msg = (f"<a href='{start_img}'>&#8203;</a>💬 <b>{html.escape(bot_name)}</b>\n\n"
+           f"<blockquote expandable>"
+           f"👥 <b>Name:</b> {html.escape(first_name)}\n"
+           f"🪪 <b>User ID:</b> <code>{uid}</code>\n"
+           f"🎯 <b>Username:</b> {username}\n"
+           f"💳 <b>Balance:</b> ₹{bal:.2f}"
+           f"</blockquote>\n"
+           f"───────────────────────────\n"
+           f"✈️ <b>Support :</b> <a href='{support_url}'>{support_handle}</a>")
+           
+    buttons = [
+        [style_btn("📲 Buy Account", b"buy_menu_main", "success", icon=5440627033111557670)],
+        [style_btn("🚀 Social media services", b"smm_menu_main", "success", icon=5408995930416362034)],
+        [style_btn("🛒 Buy Source Codes", b"src_code_menu", "success", icon=5409320020058584473)],
+        [style_btn("🛒 Buy Panels", b"panels_menu", "success", icon=5409098988156629257)],
+        [style_url("💬 Other Content ↗️", update_link, "danger", icon=6129812419028982717)],
+        [style_btn("💳 Recharge", b"depm_upi", "primary", icon=5409271925014801629), style_btn("🧙 Profile", b"profile_stats", "primary", icon=6203982793379154737)],
+        [style_btn("💬 More", b"more_menu", "primary", icon=6129627894349045589), style_url("📑 Feedback ↗️", feedback_link, "primary", icon=6129732880529628243)]
+    ]
+    
+    if isinstance(event, events.CallbackQuery.Event):
+        try:
+            await event.edit(msg, buttons=buttons, link_preview=True)
+        except MessageNotModifiedError:
+            pass
+        except Exception:
+            await event.respond(msg, buttons=buttons, link_preview=True)
+    else:
+        await event.respond(msg, buttons=buttons, link_preview=True)
+
 
 def register_start(bot):
     @bot.on(events.NewMessage(pattern=r"(?i)^(/start|🏠 𝐒ᴛᴀʀᴛ)"))

@@ -83,6 +83,35 @@ def setup_db():
         name TEXT,
         flag TEXT
     );
+    CREATE TABLE IF NOT EXISTS smm_orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        server INTEGER DEFAULT 1,
+        service_id INTEGER,
+        service_name TEXT,
+        target_link TEXT,
+        quantity INTEGER,
+        price REAL,
+        smm_order_id TEXT,
+        status TEXT DEFAULT 'Pending',
+        date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS source_codes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT,
+        description TEXT,
+        price REAL,
+        file_content TEXT,
+        available INTEGER DEFAULT 1
+    );
+    CREATE TABLE IF NOT EXISTS panels (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT,
+        description TEXT,
+        price REAL,
+        panel_content TEXT,
+        available INTEGER DEFAULT 1
+    );
     """)
     db.commit()
 
@@ -359,5 +388,44 @@ def remove_log_channel_db(channel_id):
     c_str = str(channel_id).strip()
     chs = [c for c in chs if str(c) != c_str]
     set_log_channels_db(chs)
+
+def get_start_image_url():
+    res = cur.execute("SELECT value FROM settings WHERE key='start_image'").fetchone()
+    if res and res[0]:
+        return res[0].strip()
+    return "https://yukiapi.site/file/GxElfyJf"
+
+def set_start_image_url(url):
+    cur.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('start_image', ?)", (url.strip(),))
+    db.commit()
+
+def get_source_codes():
+    rows = cur.execute("SELECT id, title, description, price, file_content, available FROM source_codes WHERE available=1").fetchall()
+    if not rows:
+        defaults = [
+            ("@vthvotebot ( giveaway bot )", "Automated Telegram giveaway & voting bot source code", 500.0, "https://t.me/vthvotebot"),
+            ("Simple music bot", "High-performance Telegram VC music bot source code", 299.0, "https://github.com"),
+            ("@QuickCodes_bot main code", "Complete QuickCodes full modular bot source code with all panels & SMM", 7000.0, "https://t.me/QuickCodes_bot")
+        ]
+        for t, d, p, f in defaults:
+            cur.execute("INSERT INTO source_codes (title, description, price, file_content) VALUES (?,?,?,?)", (t, d, p, f))
+        db.commit()
+        rows = cur.execute("SELECT id, title, description, price, file_content, available FROM source_codes WHERE available=1").fetchall()
+    return rows
+
+def get_panels():
+    rows = cur.execute("SELECT id, title, description, price, panel_content, available FROM panels WHERE available=1").fetchall()
+    if not rows:
+        defaults = [
+            ("@Quickcodes_bot (server-2) panel", "Cheapest & trusted OTP panel with instant API access", 1000.0, "Panel Login URL & API details"),
+            ("2nd Best otp panel", "High-success rate multi-country OTP panel with instant delivery", 1000.0, "Panel Login URL & API details"),
+            ("Best smm panel", "Cheapest SMM reseller panel with over 1500+ services", 399.0, "https://fathersmm.com")
+        ]
+        for t, d, p, f in defaults:
+            cur.execute("INSERT INTO panels (title, description, price, panel_content) VALUES (?,?,?,?)", (t, d, p, f))
+        db.commit()
+        rows = cur.execute("SELECT id, title, description, price, panel_content, available FROM panels WHERE available=1").fetchall()
+    return rows
+
 
 
