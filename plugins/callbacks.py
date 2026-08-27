@@ -6,7 +6,7 @@ from config import P_NO, P_MONEY, P_INR, P_GIFT, P_USERS, PE_LOCATION, PE_GIFT, 
 from utils.states import session_buy_state, deposit_input, active_orders, waiting_proof
 from plugins.start import send_main_menu
 from utils.helpers import check_channel_joined
-from utils.keyboards import style_btn
+from utils.keyboards import style_btn, style_url
 from utils.lzt import COUNTRY_TO_LZT
 
 async def send_stock_page(event, page=1):
@@ -109,10 +109,45 @@ async def show_more_menu(event):
     try: await event.edit(msg, buttons=btns)
     except MessageNotModifiedError: pass
 
+async def show_refer_menu(bot, event):
+    import urllib.parse
+    uid = event.sender_id
+    me = await bot.get_me()
+    bot_username = me.username or ""
+    ref_link = f"https://t.me/{bot_username}?start=ref_{uid}"
+    ref_count = cur.execute("SELECT COUNT(*) FROM users WHERE referred_by=?", (uid,)).fetchone()[0]
+    pct_row = cur.execute("SELECT value FROM settings WHERE key='ref_percent'").fetchone()
+    pct = pct_row[0] if pct_row else 3
+    
+    msg = (f"<blockquote>{P_GIFT} <b>🎁 𝐑ᴇғᴇʀ & 𝐄ᴀʀɴ</b>\n\n"
+           f"{P_USERS} <b>👥 𝐘ᴏᴜʀ 𝐑ᴇғᴇʀʀᴀʟs:</b> <code>{ref_count}</code>\n"
+           f"💲 <b>𝐁ᴏɴᴜs:</b> <code>{pct}%</code> ᴏғ ᴇᴠᴇʀʏ ᴅᴇᴘᴏsɪᴛ\n\n"
+           f"🔗 <b>𝐘ᴏᴜʀ 𝐋ɪɴᴋ:</b>\n<code>{ref_link}</code>\n\n"
+           f"<i>𝐒ʜᴀʀᴇ ᴛʜɪs ʟɪɴᴋ ᴡɪᴛʜ ғʀɪᴇɴᴅs. 𝐖ʜᴇɴ ᴛʜᴇʏ ᴅᴇᴘᴏsɪᴛ, ʏᴏᴜ ᴇᴀʀɴ {pct}%!</i></blockquote>")
+           
+    share_url = f"https://t.me/share/url?url={urllib.parse.quote(ref_link)}&text={urllib.parse.quote('🔥 Join TG Account Robot for cheap Telegram & WhatsApp Accounts, SMM Services & Source Codes!')}"
+    btns = [
+        [style_url("🔗 𝐒ʜᴀʀᴇ 𝐋ɪɴᴋ ↗️", share_url, "success", icon=5354889508674360491)],
+        [style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐃ᴀsʜʙᴏᴀʀᴅ", b"dashboard_main", "danger", icon=6129812419028982717)]
+    ]
+    if isinstance(event, events.CallbackQuery.Event):
+        try: await event.edit(msg, buttons=btns)
+        except MessageNotModifiedError: pass
+    else:
+        await event.respond(msg, buttons=btns)
+
 def register_callbacks(bot):
     @bot.on(events.CallbackQuery(pattern=b"^more_menu$"))
     async def cb_more_menu(e):
         await show_more_menu(e)
+
+    @bot.on(events.CallbackQuery(pattern=r"^view_referrals$"))
+    async def cb_view_referrals(e):
+        await show_refer_menu(bot, e)
+
+    @bot.on(events.NewMessage(pattern=r"(?i)^(🎁 𝐑ᴇғᴇʀ|🎁 Refer|🎁 Refer & Earn)$"))
+    async def msg_refer(e):
+        await show_refer_menu(bot, e)
 
     @bot.on(events.CallbackQuery(pattern=r"^stk_pg\|(\d+)$"))
     async def cb_stk_pg(e):
@@ -204,23 +239,6 @@ def register_callbacks(bot):
         msg = (f"<blockquote>{PE_CROWN} <b>𝐘ᴏᴜʀ 𝐁ᴀʟᴀɴᴄᴇ</b></blockquote>\n\n"
                f"<blockquote>{P_MONEY} <b>𝐁ᴀʟᴀɴᴄᴇ:</b> <code>{P_INR}{bal}</code>\n"
                f"💲 <b>𝐔𝐒𝐃:</b> <code>${to_usd(bal):.2f}</code></blockquote>")
-        await e.respond(msg)
-
-
-    @bot.on(events.NewMessage(pattern=r"(?i)^(🎁 𝐑ᴇғᴇʀ|🎁 Refer)$"))
-    async def msg_refer(e):
-        uid = e.sender_id
-        me = await bot.get_me()
-        bot_username = me.username or ""
-        ref_link = f"https://t.me/{bot_username}?start=ref_{uid}"
-        ref_count = cur.execute("SELECT COUNT(*) FROM users WHERE referred_by=?", (uid,)).fetchone()[0]
-        pct_row = cur.execute("SELECT value FROM settings WHERE key='referral_pct'").fetchone()
-        pct = pct_row[0] if pct_row else 3
-        msg = (f"<blockquote>{P_GIFT} <b>𝐑ᴇғᴇʀ & 𝐄ᴀʀɴ</b></blockquote>\n\n"
-               f"<blockquote>{P_USERS} <b>𝐘ᴏᴜʀ 𝐑ᴇғᴇʀʀᴀʟs:</b> {ref_count}\n"
-               f"💲 <b>𝐁ᴏɴᴜs:</b> {pct}% ᴏғ ᴇᴠᴇʀʏ ᴅᴇᴘᴏsɪᴛ</blockquote>\n\n"
-               f"<blockquote>🔗 <b>𝐘ᴏᴜʀ 𝐋ɪɴᴋ:</b>\n<code>{ref_link}</code></blockquote>\n\n"
-               f"<blockquote><i>𝐒ʜᴀʀᴇ ᴛʜɪs ʟɪɴᴋ ᴡɪᴛʜ ғʀɪᴇɴᴅs. 𝐖ʜᴇɴ ᴛʜᴇʏ ᴅᴇᴘᴏsɪᴛ, ʏᴏᴜ ᴇᴀʀɴ {pct}%!</i></blockquote>")
         await e.respond(msg)
 
     @bot.on(events.NewMessage(pattern=r"(?i)^(📩 𝐒ᴜᴘᴘᴏʀᴛ|📩 Support)$"))
