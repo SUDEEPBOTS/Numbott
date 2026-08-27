@@ -30,7 +30,7 @@ MAX_PAYMENT_AGE_MINUTES = 30
 def _sync_verify_utr(utr_query, max_age_mins=MAX_PAYMENT_AGE_MINUTES):
     email_user, email_pass = get_imap_credentials()
     if not email_user or not email_pass:
-        return False, "IMAP email credentials not configured in settings."
+        return False, "Gateway configuration error."
 
     utr_clean = utr_query.strip()
     if len(utr_clean) < 6:
@@ -49,11 +49,11 @@ def _sync_verify_utr(utr_query, max_age_mins=MAX_PAYMENT_AGE_MINUTES):
         # Primary search: within recent date range
         status, data = mail.search(None, f'(SINCE "{since_date}" TEXT "{utr_clean}")')
         if status != "OK" or not data or not data[0]:
-            # Secondary search: check if email exists at all to give precise error
+            # Secondary search: check if email exists at all
             status, data = mail.search(None, f'(TEXT "{utr_clean}")')
             if status != "OK" or not data or not data[0]:
                 mail.logout()
-                return False, "Payment notification not found in email inbox."
+                return False, "Payment not found or not settled yet."
 
         mail_ids = data[0].split()
         # Check matching emails starting from most recent
@@ -83,7 +83,7 @@ def _sync_verify_utr(utr_query, max_age_mins=MAX_PAYMENT_AGE_MINUTES):
                             if age_minutes > max_age_mins:
                                 logger.warning(f"Rejected old UTR {utr_clean}: email date was {email_dt} ({age_minutes:.1f} mins old, limit is {max_age_mins} mins)")
                                 mail.logout()
-                                return False, f"⚠️ Payment email is too old ({int(age_minutes)} mins ago). Auto-UPI only accepts fresh payments (within {max_age_mins} mins). If you paid earlier, please use Manual UPI."
+                                return False, "Payment transaction expired or not recent."
                         except Exception as dt_err:
                             logger.error(f"Error parsing email date: {dt_err}")
 
@@ -122,10 +122,10 @@ def _sync_verify_utr(utr_query, max_age_mins=MAX_PAYMENT_AGE_MINUTES):
                         }
 
         mail.logout()
-        return False, "UTR found in inbox but transaction details could not be parsed."
+        return False, "Transaction details could not be verified."
     except Exception as e:
         logger.error(f"IMAP verification exception: {e}")
-        return False, f"IMAP Error: {str(e)}"
+        return False, "Payment verification server error."
 
 async def verify_payment_utr(utr_query, max_age_mins=MAX_PAYMENT_AGE_MINUTES):
     """Asynchronous wrapper for IMAP payment verification."""

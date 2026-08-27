@@ -260,11 +260,11 @@ def register_deposit(bot):
                     return
                 else:
                     waiting_proof[uid] = info
-                    error_detail = v_res if isinstance(v_res, str) else "Payment notification not found."
-                    fail_text = (f"<blockquote>❌ <b>𝐕ᴇʀɪғɪᴄᴀᴛɪᴏɴ 𝐅ᴀɪʟᴇᴅ!</b>\n\n"
-                                 f"🔑 <b>𝐔𝐓𝐑:</b> <code>{utr_input}</code>\n"
-                                 f"⚠️ <b>𝐑ᴇᴀsᴏɴ:</b> {html.escape(error_detail)}\n\n"
-                                 f"<i>𝐏ʟᴇᴀsᴇ ᴍᴀᴋᴇ sᴜʀᴇ ʏᴏᴜ ʜᴀᴠᴇ ᴍᴀᴅᴇ ᴀ ғʀᴇsʜ ᴘᴀʏᴍᴇɴᴛ ᴛᴏ <code>{active_upi}</code> ᴀɴᴅ ᴇɴᴛᴇʀᴇᴅ ᴛʜᴇ ᴄᴏʀʀᴇᴄᴛ 12-ᴅɪɢɪᴛ 𝐔𝐓𝐑.</i></blockquote>")
+                    fail_text = (f"<blockquote>{P_NO} <b>❌ 𝐏ᴀʏᴍᴇɴᴛ 𝐍ᴏᴛ 𝐅ᴏᴜɴᴅ!</b>\n\n"
+                                 f"🔑 <b>𝐔𝐓𝐑:</b> <code>{utr_input}</code>\n\n"
+                                 f"𝐍ᴏ ʀᴇᴄᴇɴᴛ ᴘᴀʏᴍᴇɴᴛ ᴡᴀs ғᴏᴜɴᴅ ғᴏʀ ᴛʜɪs 𝐔𝐓𝐑.\n"
+                                 f"• 𝐈ғ ʏᴏᴜ ᴊᴜsᴛ ᴘᴀɪᴅ, ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ <b>1-2 ᴍɪɴᴜᴛᴇs</b> ᴀɴᴅ ᴛʀʏ ᴀɢᴀɪɴ.\n"
+                                 f"• 𝐎ʀ ᴜsᴇ <b>✍️ 𝐌ᴀɴᴜᴀʟ 𝐔𝐏𝐈</b> ᴛᴏ ᴜᴘʟᴏᴀᴅ ʏᴏᴜʀ ᴘᴀʏᴍᴇɴᴛ sᴄʀᴇᴇɴsʜᴏᴛ.</blockquote>")
                     try: await status_msg.edit(fail_text, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
                     except: await e.reply(fail_text, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
                     return
