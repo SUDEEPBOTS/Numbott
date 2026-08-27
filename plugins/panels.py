@@ -12,7 +12,7 @@ async def show_panels_menu(event):
     for p_id, title, desc, price, panel_link, avail in pnls:
         btns.append([style_btn(f"{title} - {P_INR}{price}", f"pnl_info|{p_id}", "primary")])
         
-    btns.append([style_btn("🔙 𝐁ᴀᴄᴋ", b"buy_menu_main", "danger", icon=6129812419028982717)])
+    btns.append([style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐃ᴀsʜʙᴏᴀʀᴅ", b"dashboard_main", "danger", icon=6129812419028982717)])
     
     msg = ("<blockquote>🌌 <b>𝐏ᴀɴᴇʟ 𝐒ᴛᴏʀᴇ</b>\n"
            "───────────────────────────────\n"

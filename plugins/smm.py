@@ -23,7 +23,7 @@ async def show_smm_servers(event):
         p_icon = 5408995930416362034 if s_id == 1 else 5409320020058584473
         btns.append([style_btn(f"{s_info['name']}", f"smm_srv|{s_id}", "primary", icon=p_icon)])
         
-    btns.append([style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐌ᴇɴᴜ", b"buy_menu_main", "danger", icon=6129812419028982717)])
+    btns.append([style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐃ᴀsʜʙᴏᴀʀᴅ", b"dashboard_main", "danger", icon=6129812419028982717)])
     
     msg = (f"<blockquote>🚀 <b>𝐒ᴏᴄɪᴀʟ 𝐌ᴇᴅɪᴀ 𝐒ᴇʀᴠɪᴄᴇs (𝐒𝐌𝐌)</b>\n\n"
            f"⚡ <b>𝐅ᴀsᴛ & 𝐈ɴsᴛᴀɴᴛ 𝐃ᴇʟɪᴠᴇʀʏ</b> ғᴏʀ ᴀʟʟ ᴍᴀᴊᴏʀ ᴘʟᴀᴛғᴏʀᴍs.\n\n"
@@ -353,7 +353,7 @@ def register_smm(bot):
                    
             btns = [
                 [style_btn("🚀 𝐁ᴜʏ 𝐌ᴏʀᴇ 𝐒ᴇʀᴠɪᴄᴇs", b"smm_menu_main", "primary", icon=5408995930416362034)],
-                [style_btn("🔙 𝐌ᴀɪɴ 𝐌ᴇɴᴜ", b"buy_menu_main", "danger", icon=6129812419028982717)]
+                [style_btn("🔙 𝐌ᴀɪɴ 𝐌ᴇɴᴜ", b"dashboard_main", "danger", icon=6129812419028982717)]
             ]
             await loading.edit(msg, buttons=btns)
         else:

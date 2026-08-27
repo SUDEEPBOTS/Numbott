@@ -628,10 +628,6 @@ def register_buy(bot):
     async def cb_open_buy_categories(e):
         await show_buy_menu(e)
 
-    @bot.on(events.CallbackQuery(pattern=b"^buy_menu_main$"))
-    async def cb_buy_menu_main(e):
-        await show_buy_menu(e)
-
     @bot.on(events.CallbackQuery(pattern=b"^by_years_menu$"))
     async def cb_by_years_menu(e):
         await show_years_catalog(e)

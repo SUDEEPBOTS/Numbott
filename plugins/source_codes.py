@@ -12,7 +12,7 @@ async def show_source_codes_menu(event):
     for c_id, title, desc, price, file_link, avail in codes:
         btns.append([style_btn(f"{title} - {P_INR}{price}", f"src_info|{c_id}", "primary")])
         
-    btns.append([style_btn("🔙 𝐁ᴀᴄᴋ", b"buy_menu_main", "danger", icon=6129812419028982717)])
+    btns.append([style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐃ᴀsʜʙᴏᴀʀᴅ", b"dashboard_main", "danger", icon=6129812419028982717)])
     
     msg = ("<blockquote>💻 <b>𝐒ᴏᴜʀᴄᴇ 𝐂ᴏᴅᴇ 𝐒ᴛᴏʀᴇ</b>\n"
            "───────────────────────────────\n"

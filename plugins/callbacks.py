@@ -104,7 +104,7 @@ async def show_more_menu(event):
         [style_btn("📊 Live Stock", b"stk_pg|1", "primary", icon=6129627894349045589)],
         [Button.url("📜 Terms & Conditions", TERMS_URL)],
         [Button.url("📩 Support", get_support_url())],
-        [style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐌ᴇɴᴜ", b"buy_menu_main", "danger", icon=6129812419028982717)]
+        [style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐃ᴀsʜʙᴏᴀʀᴅ", b"dashboard_main", "danger", icon=6129812419028982717)]
     ]
     try: await event.edit(msg, buttons=btns)
     except MessageNotModifiedError: pass
