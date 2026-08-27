@@ -46,7 +46,7 @@ async def send_main_menu(bot, event, uid):
         [style_btn("🛒 𝐁ᴜʏ 𝐒ᴏᴜʀᴄᴇ 𝐂ᴏᴅᴇs", b"src_code_menu", "success", icon=5409320020058584473)],
         [style_btn("🛒 𝐁ᴜʏ 𝐏ᴀɴᴇʟs", b"panels_menu", "success", icon=5409098988156629257)],
         [style_url("💬 𝐎ᴛʜᴇʀ 𝐂ᴏɴᴛᴇɴᴛ ↗️", update_link, "danger", icon=6129812419028982717)],
-        [style_btn("💳 𝐑ᴇᴄʜᴀʀɢᴇ", b"depm_upi", "primary", icon=5409271925014801629), style_btn("🧙 𝐏ʀᴏғɪʟᴇ", b"profile_stats", "primary", icon=6203982793379154737)],
+        [style_btn("💳 𝐑ᴇᴄʜᴀʀɢᴇ", b"open_deposit_menu", "primary", icon=5409271925014801629), style_btn("🧙 𝐏ʀᴏғɪʟᴇ", b"profile_stats", "primary", icon=6203982793379154737)],
         [style_btn("💬 𝐌ᴏʀᴇ", b"more_menu", "primary", icon=6129627894349045589), style_url("📑 𝐅ᴇᴇᴅʙᴀᴄᴋ ↗️", feedback_link, "primary", icon=6129732880529628243)]
     ]
     

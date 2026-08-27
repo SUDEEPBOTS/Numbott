@@ -12,14 +12,14 @@ from utils.states import deposit_input, waiting_proof, admin_dep_state, custom_d
 
 async def deposit_menu(event):
     btns = [
-        [style_btn("⚡ 𝐀ᴜᴛᴏ 𝐔𝐏𝐈 (𝐈ɴsᴛᴀɴᴛ 𝐐𝐑 & 𝐔𝐓𝐑)", "depm_AutoUPI", "success", icon=5409271925014801629)],
-        [style_btn("✍️ 𝐌ᴀɴᴜᴀʟ 𝐔𝐏𝐈 (𝐒ᴄʀᴇᴇɴsʜᴏᴛ 𝐏ʀᴏᴏғ)", "depm_ManualUPI", "primary", icon=5409098988156629257)],
-        [style_btn("💎 𝐂ᴡᴀʟʟᴇᴛ (5% 𝐁𝐎𝐍𝐔𝐒)", "depm_Cwallet", "primary", icon=5440627033111557670)]
+        [style_btn("⚡ 𝐀ᴜᴛᴏ 𝐔𝐏𝐈 (𝐈ɴsᴛᴀɴᴛ 𝐐𝐑 & 𝐔𝐓𝐑)", "dep_choose_AutoUPI", "success", icon=5409271925014801629)],
+        [style_btn("✍️ 𝐌ᴀɴᴜᴀʟ 𝐔𝐏𝐈 (𝐒ᴄʀᴇᴇɴsʜᴏᴛ 𝐏ʀᴏᴏғ)", "dep_choose_ManualUPI", "primary", icon=5409098988156629257)],
+        [style_btn("💎 𝐂ᴡᴀʟʟᴇᴛ (5% 𝐁𝐎𝐍𝐔𝐒)", "dep_choose_Cwallet", "primary", icon=5440627033111557670)]
     ]
     
     customs = cur.execute("SELECT name FROM custom_payments").fetchall()
     for c in customs:
-        btns.append([style_btn(f"{c[0]}", f"depm_{c[0]}", "primary", icon=5408832111773757273)])
+        btns.append([style_btn(f"{c[0]}", f"dep_choose_{c[0]}", "primary", icon=5408832111773757273)])
         
     btns.append([style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐃ᴀsʜʙᴏᴀʀᴅ", b"dashboard_main", "danger", icon=6129812419028982717)])
     
@@ -84,12 +84,12 @@ def register_deposit(bot):
     async def msg_deposit(e):
         await deposit_menu(e)
 
-    @bot.on(events.CallbackQuery(pattern=r"^(deposit_menu|depm_menu_main|depm_upi|depm_main)$"))
+    @bot.on(events.CallbackQuery(pattern=r"^(open_deposit_menu|deposit_menu|depm_menu_main|depm_upi)$"))
     async def cb_deposit_menu_main(e):
         await deposit_menu(e)
 
-    @bot.on(events.CallbackQuery(pattern=r"^depm_(.+)$"))
-    async def cb_manual_dep(e):
+    @bot.on(events.CallbackQuery(pattern=r"^dep_choose_(.+)$"))
+    async def cb_choose_dep_method(e):
         method = e.pattern_match.group(1).decode()
         await manual_deposit_init(e, method)
 
