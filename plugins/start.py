@@ -31,7 +31,7 @@ async def send_main_menu(bot, event, uid):
     
     styled_name = to_small_caps(bot_name)
     
-    msg = (f"💬 <b>{html.escape(styled_name)}</b>\n\n"
+    msg = (f"<a href='{start_img}'>&#8203;</a><blockquote>💬 <b>{html.escape(styled_name)}</b></blockquote>\n\n"
            f"<blockquote expandable>"
            f"👥 <b>𝐍ᴀᴍᴇ:</b> {html.escape(first_name)}\n"
            f"🪪 <b>𝐔sᴇʀ 𝐈𝐃:</b> <code>{uid}</code>\n"
@@ -50,20 +50,20 @@ async def send_main_menu(bot, event, uid):
         [style_btn("💬 𝐌ᴏʀᴇ", b"more_menu", "primary", icon=6129627894349045589), style_url("📑 𝐅ᴇᴇᴅʙᴀᴄᴋ ↗️", feedback_link, "primary", icon=6129732880529628243)]
     ]
     
+    preview = types.InputMediaWebPage(url=start_img, force_large_media=True)
     if isinstance(event, events.CallbackQuery.Event):
         try:
-            await event.edit(msg, buttons=buttons, file=start_img)
+            await event.edit(msg, buttons=buttons, link_preview=preview)
         except Exception:
             try:
-                await event.edit(msg, buttons=buttons)
+                await event.edit(msg, buttons=buttons, link_preview=True)
             except Exception:
-                await bot.send_file(uid, file=start_img, caption=msg, buttons=buttons)
+                await event.respond(msg, buttons=buttons, link_preview=True)
     else:
         try:
-            await bot.send_file(uid, file=start_img, caption=msg, buttons=buttons)
-        except Exception as e:
-            logger.error(f"Send start photo error: {e}")
-            await event.respond(f"<a href='{start_img}'>&#8203;</a>{msg}", buttons=buttons, link_preview=True)
+            await event.respond(msg, buttons=buttons, link_preview=preview)
+        except Exception:
+            await event.respond(msg, buttons=buttons, link_preview=True)
 
 
 def register_start(bot):
