@@ -283,6 +283,14 @@ class LZTClient:
                             if mode == 'premium' and not is_prem:
                                 continue
 
+                            stars_cnt = int(item.get("telegram_stars") or item.get("stars") or 0)
+                            if mode == 'stars' and stars_cnt <= 0:
+                                continue
+
+                            dc_val = item.get("telegram_dc") or item.get("dc")
+                            if mode == 'dc5' and str(dc_val) != '5':
+                                continue
+
                             price_rub = item.get("rub_price")
                             if price_rub is None:
                                 price_rub = float(item.get("price", 0))
