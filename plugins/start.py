@@ -31,7 +31,7 @@ async def send_main_menu(bot, event, uid):
     
     styled_name = to_small_caps(bot_name)
     
-    msg = (f"<a href='{start_img}'>&#8203;</a>💬 <b>{html.escape(styled_name)}</b>\n\n"
+    msg = (f"💬 <b>{html.escape(styled_name)}</b>\n\n"
            f"<blockquote expandable>"
            f"👥 <b>𝐍ᴀᴍᴇ:</b> {html.escape(first_name)}\n"
            f"🪪 <b>𝐔sᴇʀ 𝐈𝐃:</b> <code>{uid}</code>\n"
@@ -52,13 +52,18 @@ async def send_main_menu(bot, event, uid):
     
     if isinstance(event, events.CallbackQuery.Event):
         try:
-            await event.edit(msg, buttons=buttons, link_preview=True)
-        except MessageNotModifiedError:
-            pass
+            await event.edit(msg, buttons=buttons, file=start_img)
         except Exception:
-            await event.respond(msg, buttons=buttons, link_preview=True)
+            try:
+                await event.edit(msg, buttons=buttons)
+            except Exception:
+                await bot.send_file(uid, file=start_img, caption=msg, buttons=buttons)
     else:
-        await event.respond(msg, buttons=buttons, link_preview=True)
+        try:
+            await bot.send_file(uid, file=start_img, caption=msg, buttons=buttons)
+        except Exception as e:
+            logger.error(f"Send start photo error: {e}")
+            await event.respond(f"<a href='{start_img}'>&#8203;</a>{msg}", buttons=buttons, link_preview=True)
 
 
 def register_start(bot):
