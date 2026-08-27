@@ -1,6 +1,8 @@
 import imaplib
 import ssl
 import email
+import email.utils
+import datetime
 import re
 import asyncio
 from database import cur, db
@@ -21,7 +23,11 @@ OFFICIAL_SENDER_DOMAINS = [
     "no-reply@famapp.in"
 ]
 
-def _sync_verify_utr(utr_query):
+# Maximum allowed age for auto-verification email (in minutes)
+# Strict 30-minute window to completely block old payments/emails from past days!
+MAX_PAYMENT_AGE_MINUTES = 30
+
+def _sync_verify_utr(utr_query, max_age_mins=MAX_PAYMENT_AGE_MINUTES):
     email_user, email_pass = get_imap_credentials()
     if not email_user or not email_pass:
         return False, "IMAP email credentials not configured in settings."
@@ -36,11 +42,18 @@ def _sync_verify_utr(utr_query):
         mail.login(email_user, email_pass)
         mail.select("INBOX")
 
-        # Search by TEXT
-        status, data = mail.search(None, f'(TEXT "{utr_clean}")')
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        # Search emails from today/yesterday only
+        since_date = (now_utc - datetime.timedelta(days=1)).strftime("%d-%b-%Y")
+        
+        # Primary search: within recent date range
+        status, data = mail.search(None, f'(SINCE "{since_date}" TEXT "{utr_clean}")')
         if status != "OK" or not data or not data[0]:
-            mail.logout()
-            return False, "Payment notification not found in email inbox."
+            # Secondary search: check if email exists at all to give precise error
+            status, data = mail.search(None, f'(TEXT "{utr_clean}")')
+            if status != "OK" or not data or not data[0]:
+                mail.logout()
+                return False, "Payment notification not found in email inbox."
 
         mail_ids = data[0].split()
         # Check matching emails starting from most recent
@@ -55,6 +68,24 @@ def _sync_verify_utr(utr_query):
                     if not any(domain in from_header for domain in OFFICIAL_SENDER_DOMAINS):
                         logger.warning(f"Ignored fake/unauthorized payment email from: {from_header}")
                         continue
+
+                    # 2. STRICT DATE / EXPIRATION CHECK: Prevent using old payment emails!
+                    date_header = msg.get("Date")
+                    if date_header:
+                        try:
+                            email_dt = email.utils.parsedate_to_datetime(date_header)
+                            if email_dt.tzinfo is None:
+                                email_dt = email_dt.replace(tzinfo=datetime.timezone.utc)
+                            
+                            age_seconds = (now_utc - email_dt.astimezone(datetime.timezone.utc)).total_seconds()
+                            age_minutes = age_seconds / 60.0
+                            
+                            if age_minutes > max_age_mins:
+                                logger.warning(f"Rejected old UTR {utr_clean}: email date was {email_dt} ({age_minutes:.1f} mins old, limit is {max_age_mins} mins)")
+                                mail.logout()
+                                return False, f"⚠️ Payment email is too old ({int(age_minutes)} mins ago). Auto-UPI only accepts fresh payments (within {max_age_mins} mins). If you paid earlier, please use Manual UPI."
+                        except Exception as dt_err:
+                            logger.error(f"Error parsing email date: {dt_err}")
 
                     body = ""
                     if msg.is_multipart():
@@ -96,6 +127,6 @@ def _sync_verify_utr(utr_query):
         logger.error(f"IMAP verification exception: {e}")
         return False, f"IMAP Error: {str(e)}"
 
-async def verify_payment_utr(utr_query):
+async def verify_payment_utr(utr_query, max_age_mins=MAX_PAYMENT_AGE_MINUTES):
     """Asynchronous wrapper for IMAP payment verification."""
-    return await asyncio.to_thread(_sync_verify_utr, utr_query)
+    return await asyncio.to_thread(_sync_verify_utr, utr_query, max_age_mins)

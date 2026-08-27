@@ -259,21 +259,15 @@ def register_deposit(bot):
                             logger.error(f"Failed to log auto deposit to {log_ch}: {log_ex}")
                     return
                 else:
-                    if dep_mode == "hybrid":
-                        waiting_proof[uid] = info
-                        fail_text = (f"<blockquote>⚠️ <b>𝐏ᴀʏᴍᴇɴᴛ ɴᴏᴛ ᴅᴇᴛᴇᴄᴛᴇᴅ ʏᴇᴛ ғᴏʀ 𝐔𝐓𝐑:</b> <code>{utr_input}</code>\n\n"
-                                     f"𝐈ғ ʏᴏᴜ ᴀʟʀᴇᴀᴅʏ ᴘᴀɪᴅ ᴀɴᴅ ᴛʜᴇ ᴇᴍᴀɪʟ ɪs ᴅᴇʟᴀʏᴇᴅ, ʏᴏᴜ ᴄᴀɴ <b>sᴇɴᴅ ᴀ 𝐒ᴄʀᴇᴇɴsʜᴏᴛ</b> ʜᴇʀᴇ ɴᴏᴡ ғᴏʀ ᴍᴀɴᴜᴀʟ ᴀᴅᴍɪɴ ᴀᴘᴘʀᴏᴠᴀʟ, ᴏʀ ᴛʀʏ ᴇɴᴛᴇʀɪɴɢ ᴛʜᴇ 𝐔𝐓𝐑 ᴀɢᴀɪɴ ɪɴ 1 ᴍɪɴᴜᴛᴇ.</blockquote>")
-                        try: await status_msg.edit(fail_text, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
-                        except: await e.reply(fail_text)
-                        return
-                    else:
-                        waiting_proof[uid] = info
-                        fail_text = (f"<blockquote>❌ <b>𝐏ᴀʏᴍᴇɴᴛ 𝐍ᴏᴛ 𝐅ᴏᴜɴᴅ</b>\n\n"
-                                     f"𝐍ᴏ ᴘᴀʏᴍᴇɴᴛ ᴡᴀs ғᴏᴜɴᴅ ғᴏʀ 𝐔𝐓𝐑 <code>{utr_input}</code> ʏᴇᴛ.\n"
-                                     f"𝐏ʟᴇᴀsᴇ ᴍᴀᴋᴇ sᴜʀᴇ ʏᴏᴜ ʜᴀᴠᴇ ᴘᴀɪᴅ ᴛᴏ <code>vinit-godara@fam</code> ᴀɴᴅ ᴛʀʏ ᴀɢᴀɪɴ ɪɴ 1-2 ᴍɪɴᴜᴛᴇs.</blockquote>")
-                        try: await status_msg.edit(fail_text, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
-                        except: await e.reply(fail_text)
-                        return
+                    waiting_proof[uid] = info
+                    error_detail = v_res if isinstance(v_res, str) else "Payment notification not found."
+                    fail_text = (f"<blockquote>❌ <b>𝐕ᴇʀɪғɪᴄᴀᴛɪᴏɴ 𝐅ᴀɪʟᴇᴅ!</b>\n\n"
+                                 f"🔑 <b>𝐔𝐓𝐑:</b> <code>{utr_input}</code>\n"
+                                 f"⚠️ <b>𝐑ᴇᴀsᴏɴ:</b> {html.escape(error_detail)}\n\n"
+                                 f"<i>𝐏ʟᴇᴀsᴇ ᴍᴀᴋᴇ sᴜʀᴇ ʏᴏᴜ ʜᴀᴠᴇ ᴍᴀᴅᴇ ᴀ ғʀᴇsʜ ᴘᴀʏᴍᴇɴᴛ ᴛᴏ <code>{active_upi}</code> ᴀɴᴅ ᴇɴᴛᴇʀᴇᴅ ᴛʜᴇ ᴄᴏʀʀᴇᴄᴛ 12-ᴅɪɢɪᴛ 𝐔𝐓𝐑.</i></blockquote>")
+                    try: await status_msg.edit(fail_text, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
+                    except: await e.reply(fail_text, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
+                    return
 
         # 2. MANUAL SCREENSHOT / PROOF FLOW
         cur.execute("INSERT INTO deposits (user_id, amount, method_name, status) VALUES (?,?,?,?)", (uid, final_amt, info['method'], "pending"))
