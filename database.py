@@ -143,7 +143,7 @@ def get_usdt_rate():
 
 def get_support_url():
     res = cur.execute("SELECT value FROM settings WHERE key='support_url'").fetchone()
-    url = res[0] if res and res[0] else "https://t.me/tgtelehelpbot"
+    url = res[0] if res and res[0] else "https://t.me/sivamXpruff"
     if not url.startswith("http"): url = "https://" + url.replace("@", "t.me/")
     return url
 
