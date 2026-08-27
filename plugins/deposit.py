@@ -11,14 +11,24 @@ from utils.keyboards import style_btn
 from utils.states import deposit_input, waiting_proof, admin_dep_state, custom_dep_amt, get_user_lock
 
 async def deposit_menu(event):
-    btns = [[style_btn(f"𝐀ᴅᴅ 𝐅ᴜɴᴅs by UPI", "depm_UPI", "success", icon=5409271925014801629)],
-            [style_btn(f"𝐂ᴡᴀʟʟᴇᴛ (5% 𝐁𝐎𝐍𝐔𝐒)", "depm_Cwallet", "primary", icon=5440627033111557670)]]
+    btns = [
+        [style_btn("⚡ 𝐀ᴜᴛᴏ 𝐔𝐏𝐈 (𝐈ɴsᴛᴀɴᴛ 𝐐𝐑 & 𝐔𝐓𝐑)", "depm_AutoUPI", "success", icon=5409271925014801629)],
+        [style_btn("✍️ 𝐌ᴀɴᴜᴀʟ 𝐔𝐏𝐈 (𝐒ᴄʀᴇᴇɴsʜᴏᴛ 𝐏ʀᴏᴏғ)", "depm_ManualUPI", "primary", icon=5409098988156629257)],
+        [style_btn("💎 𝐂ᴡᴀʟʟᴇᴛ (5% 𝐁𝐎𝐍𝐔𝐒)", "depm_Cwallet", "primary", icon=5440627033111557670)]
+    ]
     
     customs = cur.execute("SELECT name FROM custom_payments").fetchall()
     for c in customs:
         btns.append([style_btn(f"{c[0]}", f"depm_{c[0]}", "primary", icon=5408832111773757273)])
         
-    msg = f"<blockquote>{PE_GIFT} <b>𝐀ᴅᴅ 𝐅ᴜɴᴅs</b>\n\n𝐂ʜᴏᴏsᴇ ʏᴏᴜʀ ᴘʀᴇғᴇʀʀᴇᴅ ᴘᴀʏᴍᴇɴᴛ ᴍᴇᴛʜᴏᴅ ʙᴇʟᴏᴡ:"
+    btns.append([style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐃ᴀsʜʙᴏᴀʀᴅ", b"dashboard_main", "danger", icon=6129812419028982717)])
+    
+    msg = (f"<blockquote>💳 <b>𝐑ᴇᴄʜᴀʀɢᴇ / 𝐀ᴅᴅ 𝐅ᴜɴᴅs</b>\n\n"
+           f"⚡ <b>𝐀ᴜᴛᴏ 𝐔𝐏𝐈:</b> 𝐈ɴsᴛᴀɴᴛ ᴀᴜᴛᴏ-ᴄʀᴇᴅɪᴛ ᴠɪᴀ 12-ᴅɪɢɪᴛ 𝐔𝐓𝐑.\n"
+           f"✍️ <b>𝐌ᴀɴᴜᴀʟ 𝐔𝐏𝐈:</b> 𝐔ᴘʟᴏᴀᴅ ᴘᴀʏᴍᴇɴᴛ sᴄʀᴇᴇɴsʜᴏᴛ ғᴏʀ ᴀᴅᴍɪɴ ᴀᴘᴘʀᴏᴠᴀʟ.\n"
+           f"💎 <b>𝐂ᴡᴀʟʟᴇᴛ:</b> 𝐂ʀʏᴘᴛᴏ ᴘᴀʏᴍᴇɴᴛ ᴡɪᴛʜ 5% ᴇxᴛʀᴀ ʙᴏɴᴜs.\n\n"
+           f"<i>👇 𝐏ʟᴇᴀsᴇ sᴇʟᴇᴄᴛ ʏᴏᴜʀ ᴘʀᴇғᴇʀʀᴇᴅ ᴍᴇᴛʜᴏᴅ:</i></blockquote>")
+           
     if isinstance(event, events.CallbackQuery.Event):
         try: await event.edit(msg, buttons=btns)
         except MessageNotModifiedError: pass
@@ -74,6 +84,10 @@ def register_deposit(bot):
     async def msg_deposit(e):
         await deposit_menu(e)
 
+    @bot.on(events.CallbackQuery(pattern=r"^(deposit_menu|depm_menu_main|depm_upi|depm_main)$"))
+    async def cb_deposit_menu_main(e):
+        await deposit_menu(e)
+
     @bot.on(events.CallbackQuery(pattern=r"^depm_(.+)$"))
     async def cb_manual_dep(e):
         method = e.pattern_match.group(1).decode()
@@ -100,21 +114,40 @@ def register_deposit(bot):
                        f"<blockquote>👉 <b>𝐒ᴇɴᴅ 𝐏ʀᴏᴏғ:</b>\n𝐏ʟᴇᴀsᴇ sᴇɴᴅ ᴛʜᴇ 𝐓ʀᴀɴsᴀᴄᴛɪᴏɴ 𝐇ᴀsʜ (𝐋ɪɴᴋ) ᴏʀ ᴀ 𝐒ᴄʀᴇᴇɴsʜᴏᴛ ᴏғ ᴛʜᴇ ᴘᴀʏᴍᴇɴᴛ ɴᴏᴡ.</blockquote>")
                 try: await bot.send_file(uid, CWALLET_QR, caption=msg, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
                 except Exception: await bot.send_message(uid, msg + f"\n\n🔗 QR Link: {CWALLET_QR}", buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
-            elif method == "UPI":
+            elif method in ("AutoUPI", "UPI"):
                 upi_res = cur.execute("SELECT value FROM settings WHERE key='upi_id'").fetchone()
                 active_upi = upi_res[0] if upi_res and upi_res[0] else UPI_ID
                 
-                dep_mode_res = cur.execute("SELECT value FROM settings WHERE key='deposit_mode'").fetchone()
-                dep_mode = dep_mode_res[0] if dep_mode_res and dep_mode_res[0] else "auto"
+                upi_url = f"upi://pay?pa={active_upi}&am={amt}&cu=INR"
+                instruction = "👉 <b>𝐀ғᴛᴇʀ 𝐏ᴀʏɪɴɢ:</b>\n𝐏ʟᴇᴀsᴇ ᴇɴᴛᴇʀ ʏᴏᴜʀ <b>12-ᴅɪɢɪᴛ 𝐔𝐓𝐑 / 𝐑ᴇғ 𝐍ᴏ.</b> (ᴏʀ 𝐓ʀᴀɴsᴀᴄᴛɪᴏɴ 𝐈𝐃) ʙᴇʟᴏᴡ:"
+                    
+                msg = (f"<blockquote>⚡ <b>𝐀ᴜᴛᴏ 𝐔𝐏𝐈 𝐃ᴇᴘᴏsɪᴛ (𝐈ɴsᴛᴀɴᴛ)</b>\n\n🆔 <b>UPI ID:</b>\n<code>{active_upi}</code></blockquote>\n"
+                       f"{rate_text}\n"
+                       f"<blockquote>{instruction}</blockquote>")
+                try: 
+                    import qrcode
+                    qr = qrcode.QRCode(version=1, box_size=10, border=4)
+                    qr.add_data(upi_url)
+                    qr.make(fit=True)
+                    img = qr.make_image(fill_color="black", back_color="white")
+                    
+                    qr_file = io.BytesIO()
+                    qr_file.name = "upi_qr.png"
+                    img.save(qr_file, "PNG")
+                    qr_file.seek(0)
+                    
+                    await bot.send_file(uid, qr_file, caption=msg, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
+                except Exception as e: 
+                    logger.error(f"Failed to send UPI QR: {e}")
+                    await bot.send_message(uid, msg, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
+            elif method == "ManualUPI":
+                upi_res = cur.execute("SELECT value FROM settings WHERE key='upi_id'").fetchone()
+                active_upi = upi_res[0] if upi_res and upi_res[0] else UPI_ID
                 
                 upi_url = f"upi://pay?pa={active_upi}&am={amt}&cu=INR"
-                
-                if dep_mode in ("auto", "hybrid"):
-                    instruction = "👉 <b>𝐀ғᴛᴇʀ 𝐏ᴀʏɪɴɢ:</b>\n𝐏ʟᴇᴀsᴇ ᴇɴᴛᴇʀ ʏᴏᴜʀ <b>12-ᴅɪɢɪᴛ 𝐔𝐓𝐑 / 𝐑ᴇғ 𝐍ᴏ.</b> (ᴏʀ 𝐓ʀᴀɴsᴀᴄᴛɪᴏɴ 𝐈𝐃) ʙᴇʟᴏᴡ:"
-                else:
-                    instruction = "👉 <b>𝐒ᴇɴᴅ 𝐏ʀᴏᴏғ:</b>\n𝐏ʟᴇᴀsᴇ sᴇɴᴅ ᴀ ᴄʟᴇᴀʀ 𝐒ᴄʀᴇᴇɴsʜᴏᴛ ᴏғ ᴛʜᴇ ᴘᴀʏᴍᴇɴᴛ ɴᴏᴡ."
+                instruction = "👉 <b>𝐒ᴇɴᴅ 𝐏ʀᴏᴏғ:</b>\n𝐏ʟᴇᴀsᴇ sᴇɴᴅ ᴀ ᴄʟᴇᴀʀ <b>𝐒ᴄʀᴇᴇɴsʜᴏᴛ</b> ᴏғ ᴛʜᴇ ᴘᴀʏᴍᴇɴᴛ ɴᴏᴡ. 𝐎ᴜʀ ᴀᴅᴍɪɴ ᴡɪʟʟ ᴠᴇʀɪғʏ ᴀɴᴅ ᴀᴘᴘʀᴏᴠᴇ ɪɴsᴛᴀɴᴛʟʏ."
                     
-                msg = (f"<blockquote>{P_UPI} <b>𝐌ᴇᴛʜᴏᴅ:</b> FamPay / UPI\n\n🆔 <b>UPI ID:</b>\n<code>{active_upi}</code></blockquote>\n"
+                msg = (f"<blockquote>✍️ <b>𝐌ᴀɴᴜᴀʟ 𝐔𝐏𝐈 𝐃ᴇᴘᴏsɪᴛ</b>\n\n🆔 <b>UPI ID:</b>\n<code>{active_upi}</code></blockquote>\n"
                        f"{rate_text}\n"
                        f"<blockquote>{instruction}</blockquote>")
                 try: 
@@ -160,7 +193,7 @@ def register_deposit(bot):
         if info['method'] == "Cwallet": final_amt = int(final_amt * 1.05)
         
         # 1. AUTO-UPI / IMAP UTR FLOW
-        if info['method'] == "UPI" and e.text and not (e.photo or e.document or e.media):
+        if info['method'] in ("AutoUPI", "UPI") and e.text and not (e.photo or e.document or e.media):
             utr_input = re.sub(r'[^0-9A-Za-z]', '', e.text.strip())
             if len(utr_input) < 6:
                 waiting_proof[uid] = info
@@ -199,8 +232,12 @@ def register_deposit(bot):
                                     f"🔑 <b>𝐔𝐓𝐑:</b> <code>{utr_input}</code>\n"
                                     f"👤 <b>𝐒ᴇɴᴅᴇʀ:</b> <code>{v_res.get('sender', 'User')}</code>\n"
                                     f"📈 <b>𝐍ᴇᴡ 𝐁ᴀʟᴀɴᴄᴇ:</b> <b>{P_INR}{new_bal}</b> (${to_usd(new_bal):.2f})</blockquote>")
-                    try: await status_msg.edit(success_text, buttons=[[style_btn("🛒 𝐁ᴜʏ 𝐀ᴄᴄᴏᴜɴᴛ", "buy_menu_main", "primary", icon=5408995930416362034)]])
-                    except: await e.reply(success_text)
+                    btns = [
+                        [style_btn("📲 𝐁ᴜʏ 𝐀ᴄᴄᴏᴜɴᴛ", "open_buy_categories", "success", icon=5440627033111557670)],
+                        [style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐃ᴀsʜʙᴏᴀʀᴅ", "dashboard_main", "danger", icon=6129812419028982717)]
+                    ]
+                    try: await status_msg.edit(success_text, buttons=btns)
+                    except: await e.reply(success_text, buttons=btns)
                     
                     for log_ch in get_log_channels_db():
                         try:
