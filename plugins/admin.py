@@ -7,7 +7,7 @@ import time
 from telethon import events, Button, TelegramClient
 from telethon.tl.functions.account import GetPasswordRequest
 from telethon.errors import SessionPasswordNeededError
-from database import cur, db, is_bot_online, is_admin, has_perm, ADMIN_ID, get_flag_by_country_name, get_country_info, update_balance, get_bot_mode
+from database import cur, db, is_bot_online, is_admin, has_perm, ADMIN_ID, get_flag_by_country_name, get_country_info, update_balance, get_bot_mode, get_change_number_fee
 from config import PE_CROWN, PE_LOCATION, PE_LIGHTNING, P_USERS, P_PKG, P_WAIT, P_ON, P_YES, P_NO, P_WARN, P_DOC, P_FLAG, P_MONEY, P_PHONE, P_GLOBE, P_2FA, P_CAL, P_OTP, P_CARD, P_TG, P_ACC, P_USDT, P_UPI, P_CART, P_GIFT, P_STATS, P_OFF, API_ID, API_HASH, bot
 from utils.keyboards import style_btn
 
@@ -21,6 +21,7 @@ async def admin_panel_handler(event):
     total_users = cur.execute("SELECT COUNT(*) FROM users").fetchone()[0]
     total_stock = cur.execute("SELECT COUNT(*) FROM stock WHERE available=1").fetchone()[0]
     pending_deposits = cur.execute("SELECT COUNT(*) FROM deposits WHERE status='pending'").fetchone()[0]
+    chg_fee = get_change_number_fee()
     btns = []
     
     if uid == ADMIN_ID or has_perm(uid, 'p_settings'):
@@ -56,9 +57,9 @@ async def admin_panel_handler(event):
         btns.append(r5)
         btns.append([style_btn("📢 Channels & FSub", "adm_channels_mgr", "success", icon=6129627894349045589), style_btn("Support URL", "adm_supporturl", "primary", icon=5409098988156629257)])
         btns.append([style_btn("💳 Auto-UPI / IMAP", "adm_autoupi", "success", icon=5409271925014801629), style_btn("🌐 LZT Panel Settings", "adm_lzt_settings", "primary", icon=5409166771330494453)])
-        btns.append([style_btn("Payments", "adm_payments", "primary", icon=5409098988156629257), style_btn("Set USDT Rate", "adm_usdtrate", "primary", icon=5409098988156629257)])
-        btns.append([style_btn("Manage Admins", "adm_manageadmins", "primary", icon=5409098988156629257), style_btn("𝐁ᴀᴄᴋup Users", "adm_backupusr", "primary", icon=5409098988156629257)])
-        btns.append([style_btn("Restore Users", "adm_restoreusr", "primary", icon=5409098988156629257)])
+        btns.append([style_btn(f"🔄 Change Num Fee: ₹{chg_fee}", "adm_setchangefee", "success", icon=5409320020058584473), style_btn("Set USDT Rate", "adm_usdtrate", "primary", icon=5409098988156629257)])
+        btns.append([style_btn("Payments", "adm_payments", "primary", icon=5409098988156629257), style_btn("Manage Admins", "adm_manageadmins", "primary", icon=5409098988156629257)])
+        btns.append([style_btn("𝐁ᴀᴄᴋup Users", "adm_backupusr", "primary", icon=5409098988156629257), style_btn("Restore Users", "adm_restoreusr", "primary", icon=5409098988156629257)])
 
     header = (f"<blockquote>{PE_CROWN} <b>𝐀ᴅᴠᴀɴᴄᴇᴅ 𝐀ᴅᴍɪɴ 𝐃ᴀsʜʙᴏᴀʀᴅ</b>\n\n"
               f"⚡ <b>𝐌ᴏᴅᴇ:</b> {mode_text}\n"

@@ -16,7 +16,8 @@ from database import (
     set_rub_rate, get_lzt_margin, set_lzt_margin, get_fsub_status, set_fsub_status,
     get_fsub_channels, get_fsub_urls, set_fsub_data, add_fsub_channel,
     remove_fsub_channel, get_log_channels_db, set_log_channels_db,
-    add_log_channel_db, remove_log_channel_db
+    add_log_channel_db, remove_log_channel_db, get_change_number_fee,
+    set_change_number_fee
 )
 from config import *
 from utils.keyboards import style_btn
@@ -547,6 +548,17 @@ async def admin_actions(event):
                     await conv.send_message(f"{P_YES} Auto-Price for {c_name} ({year}) set to {P_INR}{new_p}! Incoming accounts will use this price automatically.")
                 db.commit()
 
+            elif action_data == "setchangefee" and has_perm(uid, 'p_settings'):
+                curr_fee = get_change_number_fee()
+                fee_text = (await get_reply(f"{P_MONEY} <b>Enter NEW Change Number Fee (in INR):</b>\n\n<i>Current Fee: ₹{curr_fee}</i>\n<i>(Enter 0 to make it free)</i>")).text
+                try:
+                    new_fee = int(fee_text.strip())
+                    if new_fee < 0: raise ValueError()
+                    set_change_number_fee(new_fee)
+                    await conv.send_message(f"{P_YES} <b>Change Phone Number Service Fee updated to ₹{new_fee}!</b>")
+                except:
+                    await conv.send_message(f"{P_NO} Invalid fee amount. Please enter a valid positive number.")
+
             elif action_data == "addpay" and has_perm(uid, 'p_settings'):
                 name = html.escape((await get_reply(f"{P_CARD} <b>Enter Payment Method Name:</b>\n<i>(e.g., Binance Pay, TRX)</i>")).text)
                 qr_msg = await get_reply(f"📸 <b>Send QR Code Image:</b>\n<i>(Or type <code>skip</code> if no QR needed)</i>")
@@ -880,3 +892,16 @@ def register_admin_actions(bot):
     async def cb_admin_actions(e):
         if is_admin(e.sender_id):
             await admin_actions(e)
+
+    @bot.on(events.NewMessage(pattern=r"^/setchangefee(?:\s+(\d+))?$"))
+    async def cmd_set_change_fee(e):
+        uid = e.sender_id
+        if not is_admin(uid): return
+        val = e.pattern_match.group(1)
+        if val:
+            new_fee = int(val)
+            set_change_number_fee(new_fee)
+            await e.reply(f"{P_YES} <b>Change Number Service Fee updated to {P_INR}{new_fee}!</b>")
+        else:
+            curr = get_change_number_fee()
+            await e.reply(f"ℹ️ Current Change Number Fee: <b>{P_INR}{curr}</b>\n\nUsage: <code>/setchangefee 5</code> or <code>/setchangefee 10</code>")

@@ -10,7 +10,7 @@ from telethon.errors import (
     FreshChangePhoneForbiddenError, FloodWaitError
 )
 from telethon.tl.functions.account import SendChangePhoneCodeRequest, ChangePhoneRequest
-from database import cur, db, get_flag_by_country_name, get_bot_mode, get_panel_price, get_lzt_key
+from database import cur, db, get_flag_by_country_name, get_bot_mode, get_panel_price, get_lzt_key, get_change_number_fee
 from config import (
     PE_LOCATION, PE_GIFT, PE_LIGHTNING, PE_CHECK, P_MONEY, P_PKG, P_CARD, P_WARN,
     P_NO, P_YES, P_INR, P_TIME, P_FLAG, P_OTP, P_2FA, P_PHONE, AUTO_CANCEL_SECONDS,
@@ -24,6 +24,8 @@ search_state = {}
 change_number_state = {}
 
 def get_active_order_card(order, phone, is_admin_user=False):
+    fee = get_change_number_fee()
+    fee_badge = f" (+₹{fee})" if fee > 0 else " (FREE)"
     msg = (f"<blockquote expandable>{PE_LIGHTNING} <b>𝐎ʀᴅᴇʀ 𝐀ᴄᴛɪᴠᴇ!</b>\n\n"
            f"{P_PHONE} <b>𝐏ʜᴏɴᴇ:</b> <code>+{phone}</code>\n"
            f"{P_FLAG} <b>𝐂ᴏᴜɴᴛʀʏ:</b> {order['c_icon']} {order['country']}\n"
@@ -34,7 +36,7 @@ def get_active_order_card(order, phone, is_admin_user=False):
            f"<i>💡 𝐘ᴏᴜ ᴄᴀɴ ᴀʟsᴏ ᴛᴀᴘ '🔄 𝐂ʜᴀɴɢᴇ ᴛᴏ 𝐌ʏ 𝐍ᴜᴍʙᴇʀ' ᴛᴏ ᴍɪɢʀᴀᴛᴇ ᴛʜɪs ᴀᴄᴄᴏᴜɴᴛ ᴅɪʀᴇᴄᴛʟʏ ᴛᴏ ʏᴏᴜʀ ᴘᴇʀsᴏɴᴀʟ ɴᴜᴍʙᴇʀ!</i></blockquote>")
     
     btns = [
-        [style_btn("🔄 𝐂ʜᴀɴɢᴇ ᴛᴏ 𝐌ʏ 𝐍ᴜᴍʙᴇʀ", f"chg_num|{phone}", "success", icon=5409320020058584473)],
+        [style_btn(f"🔄 𝐂ʜᴀɴɢᴇ ᴛᴏ 𝐌ʏ 𝐍ᴜᴍʙᴇʀ{fee_badge}", f"chg_num|{phone}", "success", icon=5409320020058584473)],
         [
             style_btn("🔄 𝐆ᴇᴛ 𝐎𝐓𝐏 𝐀ɢᴀɪɴ", f"get_otp_again|{phone}", "primary", icon=5408995930416362034),
             style_btn("✅ 𝐅ɪɴɪsʜ 𝐎ʀᴅᴇʀ", f"finish_order|{phone}", "primary", icon=5409320020058584473)
@@ -804,9 +806,17 @@ def register_buy(bot):
         if order['uid'] != uid:
             return await e.answer("🚫 Not your order!", alert=True)
         
+        fee = get_change_number_fee()
+        u_bal_row = cur.execute("SELECT balance FROM users WHERE user_id=?", (uid,)).fetchone()
+        u_bal = u_bal_row[0] if u_bal_row else 0
+        if fee > 0 and u_bal < fee:
+            return await e.answer(f"❌ Insufficient Balance! Service Fee for Number Change is ₹{fee}. Your balance: ₹{u_bal}.", alert=True)
+        
         change_number_state[uid] = {'stage': 'await_new_phone', 'phone': phone}
+        fee_info = f"💰 <b>𝐒ᴇʀᴠɪᴄᴇ 𝐅ᴇᴇ:</b> <code>₹{fee}</code> <i>(Deducted upon successful migration)</i>\n\n" if fee > 0 else "🆓 <b>𝐒ᴇʀᴠɪᴄᴇ 𝐅ᴇᴇ:</b> <code>FREE</code>\n\n"
         msg = (f"<blockquote>🔄 <b>𝐂ʜᴀɴɢᴇ 𝐀ᴄᴄᴏᴜɴᴛ 𝐏ʜᴏɴᴇ 𝐍ᴜᴍʙᴇʀ</b>\n\n"
-               f"📱 <b>𝐂ᴜʀʀᴇɴᴛ 𝐍ᴜᴍʙᴇʀ:</b> <code>+{phone}</code>\n\n"
+               f"📱 <b>𝐂ᴜʀʀᴇɴᴛ 𝐍ᴜᴍʙᴇʀ:</b> <code>+{phone}</code>\n"
+               f"{fee_info}"
                f"🔻 <b>𝐈ɴsᴛʀᴜᴄᴛɪᴏɴs:</b>\n"
                f"𝐏ʟᴇᴀsᴇ sᴇɴᴅ ʏᴏᴜʀ <b>𝐍ᴇᴡ 𝐏ʜᴏɴᴇ 𝐍ᴜᴍʙᴇʀ</b> ɪɴ ɪɴᴛᴇʀɴᴀᴛɪᴏɴᴀʟ ғᴏʀᴍᴀᴛ ʙᴇʟᴏᴡ:\n"
                f"<i>𝐄xᴀᴍᴘʟᴇ: <code>+919876543210</code> ᴏʀ <code>+14155552671</code></i>\n\n"
@@ -901,10 +911,13 @@ def register_buy(bot):
                 
                 change_number_state.pop(uid, None)
                 order['paid'] = True
+                fee = get_change_number_fee()
                 
                 async with get_user_lock(uid):
+                    if fee > 0:
+                        cur.execute("UPDATE users SET balance = balance - ? WHERE user_id=? AND balance >= ?", (fee, uid, fee))
                     cur.execute("INSERT INTO orders (user_id, country, year, price, phone, otp) VALUES (?,?,?,?,?,?)", 
-                                (uid, order['country'], order['year'], order['price'], new_phone, f"Migrated from {orig_phone}"))
+                                (uid, order['country'], order['year'], order['price'] + fee, new_phone, f"Migrated from {orig_phone} (Fee: ₹{fee})"))
                     cur.execute("DELETE FROM stock WHERE phone=?", (orig_phone,))
                     db.commit()
                     
@@ -916,7 +929,8 @@ def register_buy(bot):
                                          f"📱 <b>𝐎ʀɪɢɪɴᴀʟ:</b> <code>+{orig_phone}</code>\n"
                                          f"🔄 <b>𝐍ᴇᴡ 𝐍ᴜᴍʙᴇʀ:</b> <code>{new_phone}</code>\n"
                                          f"{P_FLAG} <b>𝐂ᴏᴜɴᴛʀʏ:</b> {order['c_icon']} {order['country']}\n"
-                                         f"{P_MONEY} <b>𝐏ʀɪᴄᴇ:</b> {P_INR}{order['price']}</blockquote>")
+                                         f"💰 <b>𝐂ʜᴀɴɢᴇ 𝐅ᴇᴇ:</b> {P_INR}{fee}\n"
+                                         f"{P_MONEY} <b>𝐓ᴏᴛᴀʟ 𝐏ʀɪᴄᴇ:</b> {P_INR}{order['price'] + fee}</blockquote>")
                             await bot.send_message(ch, admin_log)
                         except: pass
                 
@@ -924,12 +938,13 @@ def register_buy(bot):
                 except: pass
                 active_orders.pop(orig_phone, None)
                 
+                fee_note = f"\n💰 <b>𝐒ᴇʀᴠɪᴄᴇ 𝐅ᴇᴇ 𝐂ʜᴀʀɢᴇᴅ:</b> <code>{P_INR}{fee}</code>" if fee > 0 else ""
                 success_msg = (
                     f"<blockquote>{PE_GIFT} <b>🎉 𝐏ʜᴏɴᴇ 𝐍ᴜᴍʙᴇʀ 𝐂ʜᴀɴɢᴇᴅ 𝐒ᴜᴄᴄᴇssғᴜʟʟʏ!</b>\n\n"
                     f"📱 <b>𝐍ᴇᴡ 𝐏ʜᴏɴᴇ:</b> <code>{new_phone}</code>\n"
                     f"{P_FLAG} <b>𝐂ᴏᴜɴᴛʀʏ:</b> {order['c_icon']} {order['country']}\n"
                     f"📆 <b>𝐀ᴄᴄᴏᴜɴᴛ 𝐘ᴇᴀʀ:</b> <b>{order['year']}</b>\n"
-                    f"🔐 <b>2𝐅𝐀 𝐏ᴀssᴡᴏʀᴅ:</b> <code>{order['twofa']}</code>\n\n"
+                    f"🔐 <b>2𝐅𝐀 𝐏ᴀssᴡᴏʀᴅ:</b> <code>{order['twofa']}</code>{fee_note}\n\n"
                     f"✅ <b>𝐓ʜᴇ ᴀᴄᴄᴏᴜɴᴛ ɪs ɴᴏᴡ 100% ᴍɪɢʀᴀᴛᴇᴅ ᴛᴏ ʏᴏᴜʀ ɴᴇᴡ ɴᴜᴍʙᴇʀ!</b>\n"
                     f"𝐘ᴏᴜ ᴄᴀɴ ɴᴏᴡ ʟᴏɢɪɴ ᴅɪʀᴇᴄᴛʟʏ ᴜsɪɴɢ ʏᴏᴜʀ ᴏᴡɴ ɴᴜᴍʙᴇʀ (<code>{new_phone}</code>).</blockquote>"
                 )

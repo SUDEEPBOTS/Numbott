@@ -265,6 +265,17 @@ def get_panel_price(country, year, lzt_price_rub=0, mode='bulk'):
         return final_p + 150
     return final_p
 
+def get_change_number_fee():
+    res = cur.execute("SELECT value FROM settings WHERE key='change_number_fee'").fetchone()
+    try:
+        return int(res[0]) if res and res[0] is not None else 10
+    except:
+        return 10
+
+def set_change_number_fee(fee):
+    cur.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('change_number_fee', ?)", (str(fee),))
+    db.commit()
+
 def get_fsub_status():
     res = cur.execute("SELECT value FROM settings WHERE key='fsub_status'").fetchone()
     return res[0].strip().lower() if res and res[0] else 'on'
