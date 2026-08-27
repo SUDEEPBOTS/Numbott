@@ -4,7 +4,12 @@ import time
 import zipfile
 import re
 from telethon import events, Button, TelegramClient, types
-from telethon.errors import MessageNotModifiedError
+from telethon.errors import (
+    MessageNotModifiedError, PhoneNumberInvalidError, PhoneNumberOccupiedError,
+    PhoneCodeInvalidError, PhoneCodeExpiredError,
+    FreshChangePhoneForbiddenError, FloodWaitError
+)
+from telethon.tl.functions.account import SendChangePhoneCodeRequest, ChangePhoneRequest
 from database import cur, db, get_flag_by_country_name, get_bot_mode, get_panel_price, get_lzt_key
 from config import (
     PE_LOCATION, PE_GIFT, PE_LIGHTNING, PE_CHECK, P_MONEY, P_PKG, P_CARD, P_WARN,
@@ -14,6 +19,30 @@ from config import (
 from utils.keyboards import style_btn
 from utils.states import active_orders, session_buy_state, get_user_lock
 from utils.lzt import lzt_client, COUNTRY_TO_LZT
+
+search_state = {}
+change_number_state = {}
+
+def get_active_order_card(order, phone, is_admin_user=False):
+    msg = (f"<blockquote expandable>{PE_LIGHTNING} <b>𝐎ʀᴅᴇʀ 𝐀ᴄᴛɪᴠᴇ!</b>\n\n"
+           f"{P_PHONE} <b>𝐏ʜᴏɴᴇ:</b> <code>+{phone}</code>\n"
+           f"{P_FLAG} <b>𝐂ᴏᴜɴᴛʀʏ:</b> {order['c_icon']} {order['country']}\n"
+           f"🔐 <b>2𝐅𝐀 𝐏ᴀssᴡᴏʀᴅ:</b> <code>{order['twofa']}</code>\n\n"
+           f"🔻 <b>𝐈ɴsᴛʀᴜᴄᴛɪᴏɴs:</b>\n"
+           f"1. 𝐎ᴘᴇɴ 𝐓ᴇʟᴇɢʀᴀᴍ & 𝐀ᴅᴅ 𝐀ᴄᴄᴏᴜɴᴛ (<code>+{phone}</code>).\n"
+           f"2. ⏳ <b>𝐏ʟᴇᴀsᴇ ᴡᴀɪᴛ!</b> 𝐓ʜᴇ ʙᴏᴛ ɪs ᴀᴄᴛɪᴠᴇʟʏ ʟɪsᴛᴇɴɪɴɢ ғᴏʀ ʏᴏᴜʀ 𝐎𝐓𝐏.\n\n"
+           f"<i>💡 𝐘ᴏᴜ ᴄᴀɴ ᴀʟsᴏ ᴛᴀᴘ '🔄 𝐂ʜᴀɴɢᴇ ᴛᴏ 𝐌ʏ 𝐍ᴜᴍʙᴇʀ' ᴛᴏ ᴍɪɢʀᴀᴛᴇ ᴛʜɪs ᴀᴄᴄᴏᴜɴᴛ ᴅɪʀᴇᴄᴛʟʏ ᴛᴏ ʏᴏᴜʀ ᴘᴇʀsᴏɴᴀʟ ɴᴜᴍʙᴇʀ!</i></blockquote>")
+    
+    btns = [
+        [style_btn("🔄 𝐂ʜᴀɴɢᴇ ᴛᴏ 𝐌ʏ 𝐍ᴜᴍʙᴇʀ", f"chg_num|{phone}", "success", icon=5409320020058584473)],
+        [
+            style_btn("🔄 𝐆ᴇᴛ 𝐎𝐓𝐏 𝐀ɢᴀɪɴ", f"get_otp_again|{phone}", "primary", icon=5408995930416362034),
+            style_btn("✅ 𝐅ɪɴɪsʜ 𝐎ʀᴅᴇʀ", f"finish_order|{phone}", "primary", icon=5409320020058584473)
+        ]
+    ]
+    if is_admin_user:
+        btns.append([style_btn("❌ [Admin] Cancel & Refund", f"cancel_order|{phone}", "danger", icon=6129888444245089008)])
+    return msg, btns
 
 async def get_countries_list():
     """Retrieve available countries based on bot_mode."""
@@ -404,17 +433,10 @@ async def process_purchase(event, mode, country, year, price_str):
                 db.commit()
             return await event.edit(f"{P_NO} <b>Error initializing account. (Session Dead)</b> Money refunded.")
 
-        msg = (f"<blockquote expandable>{PE_LIGHTNING} <b>𝐎ʀᴅᴇʀ 𝐀ᴄᴛɪᴠᴇ!</b>\n\n"
-               f"{P_PHONE} <b>𝐏ʜᴏɴᴇ:</b> <code>{phone}</code>\n"
-               f"{P_FLAG} <b>𝐂ᴏᴜɴᴛʀʏ:</b> {c_icon} {country}\n\n"
-               f"🔻 <b>𝐈ɴsᴛʀᴜᴄᴛɪᴏɴs:</b>\n"
-               f"1. 𝐎ᴘᴇɴ 𝐓ᴇʟᴇɢʀᴀᴍ & 𝐀ᴅᴅ 𝐀ᴄᴄᴏᴜɴᴛ\n"
-               f"2. 𝐄ɴᴛᴇʀ ᴛʜᴇ ɴᴜᴍʙᴇʀ ᴀʙᴏᴠᴇ.\n"
-               f"3. ⏳ <b>𝐏ʟᴇᴀsᴇ ᴡᴀɪᴛ!</b> 𝐓ʜᴇ ʙᴏᴛ ɪs ᴀᴄᴛɪᴠᴇʟʏ ʟɪsᴛᴇɴɪɴɢ ғᴏʀ ʏᴏᴜʀ 𝐎𝐓𝐏 ᴀɴᴅ ᴡɪʟʟ sᴇɴᴅ ɪᴛ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ᴏɴᴄᴇ 𝐓ᴇʟᴇɢʀᴀᴍ ᴅᴇʟɪᴠᴇʀs ɪᴛ.\n\n"
-               f"<i>𝐍ᴏᴛᴇ: 𝐈ғ ɴᴏ 𝐎𝐓𝐏 ɪs ʀᴇᴄᴇɪᴠᴇᴅ ᴡɪᴛʜɪɴ 10 ᴍɪɴᴜᴛᴇs, ᴛʜᴇ ʙᴏᴛ ᴡɪʟʟ ᴀᴜᴛᴏ-ᴄᴀɴᴄᴇʟ ᴀɴᴅ ʀᴇғᴜɴᴅ ʏᴏᴜʀ ʙᴀʟᴀɴᴄᴇ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ.</i></blockquote>")
-        
-        cancel_btn = [[style_btn("❌ 𝐂ᴀɴᴄᴇʟ & 𝐑ᴇғᴜɴᴅ", f"cancel_order|{phone}", "danger", icon=6129888444245089008)]]
-        sent_msg = await event.edit(msg, buttons=cancel_btn)
+        from database import is_admin
+        temp_order = {'c_icon': c_icon, 'country': country, 'twofa': twofa_pass}
+        msg, active_btns = get_active_order_card(temp_order, phone, is_admin(uid))
+        sent_msg = await event.edit(msg, buttons=active_btns)
         
         active_orders[phone] = {
             'uid': uid, 'client': client, 'sess': sess, 'start_time': time.time(), 
@@ -482,23 +504,9 @@ async def process_purchase(event, mode, country, year, price_str):
             twofa_pass = bought_info.get("twofa") or "None"
             str_sess = bought_info.get("string_session")
 
-            msg = (f"<blockquote expandable>{PE_LIGHTNING} <b>𝐎ʀᴅᴇʀ 𝐀ᴄᴛɪᴠᴇ!</b>\n\n"
-                   f"{P_PHONE} <b>𝐏ʜᴏɴᴇ:</b> <code>+{phone}</code>\n"
-                   f"{P_FLAG} <b>𝐂ᴏᴜɴᴛʀʏ:</b> {c_icon} {country}\n\n"
-                   f"🔻 <b>𝐈ɴsᴛʀᴜᴄᴛɪᴏɴs:</b>\n"
-                   f"1. 𝐎ᴘᴇɴ 𝐓ᴇʟᴇɢʀᴀᴍ & 𝐀ᴅᴅ 𝐀ᴄᴄᴏᴜɴᴛ\n"
-                   f"2. 𝐄ɴᴛᴇʀ ᴛʜᴇ ɴᴜᴍʙᴇʀ ᴀʙᴏᴠᴇ (<code>+{phone}</code>).\n"
-                   f"3. ⏳ <b>𝐏ʟᴇᴀsᴇ ᴡᴀɪᴛ!</b> 𝐓ʜᴇ ʙᴏᴛ ɪs ᴀᴄᴛɪᴠᴇʟʏ ʟɪsᴛᴇɴɪɴɢ ғᴏʀ ʏᴏᴜʀ 𝐎𝐓𝐏 ᴀɴᴅ ᴡɪʟʟ sᴇɴᴅ ɪᴛ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ᴏɴᴄᴇ 𝐓ᴇʟᴇɢʀᴀᴍ ᴅᴇʟɪᴠᴇʀs ɪᴛ.\n\n"
-                   f"<i>💡 𝐄ɴᴛᴇʀ ᴛʜᴇ ɴᴜᴍʙᴇʀ ɪɴ 𝐓ᴇʟᴇɢʀᴀᴍ ᴀɴᴅ ᴛᴀᴘ '𝐒ᴇɴᴅ 𝐒𝐌𝐒/𝐂ᴏᴅᴇ'. 𝐘ᴏᴜʀ 𝐎𝐓𝐏 ᴡɪʟʟ ᴀʀʀɪᴠᴇ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ʜᴇʀᴇ!</i></blockquote>")
-            
             from database import is_admin
-            active_btns = [
-                [style_btn("🔄 𝐆ᴇᴛ 𝐎𝐓𝐏 𝐀ɢᴀɪɴ", f"get_otp_again|{phone}", "primary", icon=5408995930416362034)],
-                [style_btn("✅ 𝐅ɪɴɪsʜ 𝐎ʀᴅᴇʀ", f"finish_order|{phone}", "success", icon=5409320020058584473)]
-            ]
-            if is_admin(uid):
-                active_btns.append([style_btn("❌ [Admin] Cancel & Refund", f"cancel_order|{phone}", "danger", icon=6129888444245089008)])
-                
+            temp_order = {'c_icon': c_icon, 'country': country, 'twofa': twofa_pass}
+            msg, active_btns = get_active_order_card(temp_order, phone, is_admin(uid))
             sent_msg = await event.edit(msg, buttons=active_btns)
 
             active_orders[phone] = {
@@ -785,3 +793,152 @@ def register_buy(bot):
             msg = (f"<blockquote>❌ <b>𝐍ᴏ ᴄᴏᴜɴᴛʀɪᴇs ғᴏᴜɴᴅ ᴍᴀᴛᴄʜɪɴɢ:</b> <code>{html.escape(query)}</code>\n\n"
                    f"𝐏ʟᴇᴀsᴇ ᴄʜᴇᴄᴋ ᴛʜᴇ sᴘᴇʟʟɪɴɢ ᴏʀ ʙʀᴏᴡsᴇ <b>𝐀ʟʟ 𝐂ᴏᴜɴᴛʀɪᴇs</b>.</blockquote>")
             await e.reply(msg, buttons=f_btns)
+
+    @bot.on(events.CallbackQuery(pattern=r"^chg_num\|(.+)$"))
+    async def cb_chg_num(e):
+        phone = e.pattern_match.group(1).decode()
+        uid = e.sender_id
+        if phone not in active_orders:
+            return await e.answer("⚠️ Order expired or completed.", alert=True)
+        order = active_orders[phone]
+        if order['uid'] != uid:
+            return await e.answer("🚫 Not your order!", alert=True)
+        
+        change_number_state[uid] = {'stage': 'await_new_phone', 'phone': phone}
+        msg = (f"<blockquote>🔄 <b>𝐂ʜᴀɴɢᴇ 𝐀ᴄᴄᴏᴜɴᴛ 𝐏ʜᴏɴᴇ 𝐍ᴜᴍʙᴇʀ</b>\n\n"
+               f"📱 <b>𝐂ᴜʀʀᴇɴᴛ 𝐍ᴜᴍʙᴇʀ:</b> <code>+{phone}</code>\n\n"
+               f"🔻 <b>𝐈ɴsᴛʀᴜᴄᴛɪᴏɴs:</b>\n"
+               f"𝐏ʟᴇᴀsᴇ sᴇɴᴅ ʏᴏᴜʀ <b>𝐍ᴇᴡ 𝐏ʜᴏɴᴇ 𝐍ᴜᴍʙᴇʀ</b> ɪɴ ɪɴᴛᴇʀɴᴀᴛɪᴏɴᴀʟ ғᴏʀᴍᴀᴛ ʙᴇʟᴏᴡ:\n"
+               f"<i>𝐄xᴀᴍᴘʟᴇ: <code>+919876543210</code> ᴏʀ <code>+14155552671</code></i>\n\n"
+               f"⚠️ <i>𝐍ᴏᴛᴇ: 𝐌ᴀᴋᴇ sᴜʀᴇ ʏᴏᴜʀ ɴᴇᴡ ɴᴜᴍʙᴇʀ ᴅᴏᴇs ɴᴏᴛ ᴀʟʀᴇᴀᴅʏ ʜᴀᴠᴇ ᴀ 𝐓ᴇʟᴇɢʀᴀᴍ ᴀᴄᴄᴏᴜɴᴛ!</i></blockquote>")
+        btns = [[style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐎ʀᴅᴇʀ", f"back_to_order|{phone}", "danger", icon=6129812419028982717)]]
+        try: await e.edit(msg, buttons=btns)
+        except MessageNotModifiedError: pass
+
+    @bot.on(events.CallbackQuery(pattern=r"^back_to_order\|(.+)$"))
+    async def cb_back_to_order(e):
+        phone = e.pattern_match.group(1).decode()
+        uid = e.sender_id
+        change_number_state.pop(uid, None)
+        if phone not in active_orders:
+            return await e.answer("⚠️ Order expired or completed.", alert=True)
+        order = active_orders[phone]
+        from database import is_admin
+        msg, btns = get_active_order_card(order, phone, is_admin(uid))
+        try: await e.edit(msg, buttons=btns)
+        except MessageNotModifiedError: pass
+
+    @bot.on(events.NewMessage(func=lambda e: e.sender_id in change_number_state and not e.text.startswith('/')))
+    async def msg_change_number(e):
+        uid = e.sender_id
+        state = change_number_state.get(uid)
+        if not state: return
+        
+        stage = state.get('stage')
+        
+        if stage == 'await_new_phone':
+            orig_phone = state['phone']
+            if orig_phone not in active_orders:
+                change_number_state.pop(uid, None)
+                return await e.reply("⚠️ Order expired or completed.")
+                
+            new_phone = re.sub(r"[^\d+]", "", (e.text or "").strip())
+            if not new_phone.startswith('+'):
+                new_phone = '+' + new_phone
+                
+            if len(new_phone) < 8 or len(new_phone) > 17:
+                return await e.reply(f"{P_NO} <b>Invalid phone number format!</b>\nPlease send in international format, e.g. <code>+919876543210</code>")
+                
+            order = active_orders[orig_phone]
+            client = order['client']
+            loading = await e.reply("⏳ <i>Sending verification code to your new number...</i>")
+            
+            try:
+                sent_res = await client(SendChangePhoneCodeRequest(phone_number=new_phone))
+                change_number_state[uid] = {
+                    'stage': 'await_otp',
+                    'orig_phone': orig_phone,
+                    'new_phone': new_phone,
+                    'phone_code_hash': sent_res.phone_code_hash
+                }
+                msg = (f"<blockquote>📩 <b>𝐕ᴇʀɪғɪᴄᴀᴛɪᴏɴ 𝐂ᴏᴅᴇ 𝐒ᴇɴᴛ!</b>\n\n"
+                       f"📱 <b>𝐍ᴇᴡ 𝐍ᴜᴍʙᴇʀ:</b> <code>{new_phone}</code>\n\n"
+                       f"<i>𝐀 ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴄᴏᴅᴇ (𝐎𝐓𝐏) ʜᴀs ʙᴇᴇɴ sᴇɴᴛ ᴛᴏ ʏᴏᴜʀ ɴᴇᴡ ɴᴜᴍʙᴇʀ ᴠɪᴀ 𝐒𝐌𝐒 / 𝐓ᴇʟᴇɢʀᴀᴍ.</i>\n\n"
+                       f"👉 <b>𝐏ʟᴇᴀsᴇ ᴛʏᴘᴇ ᴀɴᴅ sᴇɴᴅ ᴛʜᴇ 𝐎𝐓𝐏 ᴄᴏᴅᴇ ʜᴇʀᴇ ɴᴏᴡ:</b></blockquote>")
+                btns = [[style_btn("❌ 𝐂ᴀɴᴄᴇʟ 𝐍ᴜᴍʙᴇʀ 𝐂ʜᴀɴɢᴇ", f"back_to_order|{orig_phone}", "danger", icon=6129888444245089008)]]
+                await loading.edit(msg, buttons=btns)
+            except PhoneNumberOccupiedError:
+                await loading.edit(f"<blockquote>{P_NO} <b>❌ 𝐍ᴜᴍʙᴇʀ 𝐀ʟʀᴇᴀᴅʏ 𝐔sᴇᴅ!</b>\n\n𝐓ʜᴇ ɴᴜᴍʙᴇʀ <code>{new_phone}</code> ɪs ᴀʟʀᴇᴀᴅʏ ʀᴇɢɪsᴛᴇʀᴇᴅ ᴏɴ 𝐓ᴇʟᴇɢʀᴀᴍ.\n𝐏ʟᴇᴀsᴇ ᴜsᴇ ᴀ ɴᴜᴍʙᴇʀ ᴛʜᴀᴛ ᴅᴏᴇs ɴᴏᴛ ʜᴀᴠᴇ ᴀ 𝐓ᴇʟᴇɢʀᴀᴍ ᴀᴄᴄᴏᴜɴᴛ, ᴏʀ ᴅᴇʟᴇᴛᴇ ᴛʜᴀᴛ ᴀᴄᴄᴏᴜɴᴛ ғɪʀsᴛ.</blockquote>", buttons=[[style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐎ʀᴅᴇʀ", f"back_to_order|{orig_phone}", "primary", icon=6129812419028982717)]])
+            except FreshChangePhoneForbiddenError:
+                await loading.edit(f"<blockquote>{P_NO} <b>❌ 𝐂ᴀɴɴᴏᴛ 𝐂ʜᴀɴɢᴇ 𝐍ᴜᴍʙᴇʀ 𝐘ᴇᴛ</b>\n\n𝐓ᴇʟᴇɢʀᴀᴍ sᴇᴄᴜʀɪᴛʏ ʀᴇǫᴜɪʀᴇs ɴᴇᴡ 𝐬𝐞𝐬𝐬𝐢𝐨𝐧𝐬 ᴛᴏ ᴡᴀɪᴛ ʙᴇғᴏʀᴇ ᴄʜᴀɴɢɪɴɢ ɴᴜᴍʙᴇʀs.\n𝐏ʟᴇᴀsᴇ ʟᴏɢɪɴ ᴠɪᴀ ᴛʜᴇ ɴᴏʀᴍᴀʟ 𝐎𝐓𝐏 ғɪʀsᴛ.</blockquote>", buttons=[[style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐎ʀᴅᴇʀ", f"back_to_order|{orig_phone}", "primary", icon=6129812419028982717)]])
+            except Exception as ex:
+                logger.error(f"SendChangePhoneCode error: {ex}")
+                await loading.edit(f"<blockquote>{P_NO} <b>❌ 𝐄ʀʀᴏʀ:</b> {str(ex)}</blockquote>", buttons=[[style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐎ʀᴅᴇʀ", f"back_to_order|{orig_phone}", "primary", icon=6129812419028982717)]])
+
+        elif stage == 'await_otp':
+            orig_phone = state['orig_phone']
+            new_phone = state['new_phone']
+            phone_code_hash = state['phone_code_hash']
+            
+            if orig_phone not in active_orders:
+                change_number_state.pop(uid, None)
+                return await e.reply("⚠️ Order expired or completed.")
+                
+            otp_code = re.sub(r"\D", "", (e.text or "").strip())
+            if not otp_code or len(otp_code) < 4:
+                return await e.reply(f"{P_NO} <b>Invalid OTP!</b> Please send the numeric code received on your phone.")
+                
+            order = active_orders[orig_phone]
+            client = order['client']
+            loading = await e.reply("⏳ <i>Verifying code and changing phone number...</i>")
+            
+            try:
+                await client(ChangePhoneRequest(
+                    phone_number=new_phone,
+                    phone_code_hash=phone_code_hash,
+                    phone_code=otp_code
+                ))
+                
+                change_number_state.pop(uid, None)
+                order['paid'] = True
+                
+                async with get_user_lock(uid):
+                    cur.execute("INSERT INTO orders (user_id, country, year, price, phone, otp) VALUES (?,?,?,?,?,?)", 
+                                (uid, order['country'], order['year'], order['price'], new_phone, f"Migrated from {orig_phone}"))
+                    cur.execute("DELETE FROM stock WHERE phone=?", (orig_phone,))
+                    db.commit()
+                    
+                    from config import LOG_CHANNELS
+                    for ch in LOG_CHANNELS:
+                        try:
+                            admin_log = (f"<blockquote><b>🛍️ 𝐍ᴇᴡ 𝐏ᴜʀᴄʜᴀsᴇ (𝐍ᴜᴍʙᴇʀ 𝐌ɪɢʀᴀᴛᴇᴅ)</b>\n\n"
+                                         f"👤 <b>𝐔sᴇᴅ 𝐁ʏ:</b> <code>{uid}</code>\n"
+                                         f"📱 <b>𝐎ʀɪɢɪɴᴀʟ:</b> <code>+{orig_phone}</code>\n"
+                                         f"🔄 <b>𝐍ᴇᴡ 𝐍ᴜᴍʙᴇʀ:</b> <code>{new_phone}</code>\n"
+                                         f"{P_FLAG} <b>𝐂ᴏᴜɴᴛʀʏ:</b> {order['c_icon']} {order['country']}\n"
+                                         f"{P_MONEY} <b>𝐏ʀɪᴄᴇ:</b> {P_INR}{order['price']}</blockquote>")
+                            await bot.send_message(ch, admin_log)
+                        except: pass
+                
+                try: await client.disconnect()
+                except: pass
+                active_orders.pop(orig_phone, None)
+                
+                success_msg = (
+                    f"<blockquote>{PE_GIFT} <b>🎉 𝐏ʜᴏɴᴇ 𝐍ᴜᴍʙᴇʀ 𝐂ʜᴀɴɢᴇᴅ 𝐒ᴜᴄᴄᴇssғᴜʟʟʏ!</b>\n\n"
+                    f"📱 <b>𝐍ᴇᴡ 𝐏ʜᴏɴᴇ:</b> <code>{new_phone}</code>\n"
+                    f"{P_FLAG} <b>𝐂ᴏᴜɴᴛʀʏ:</b> {order['c_icon']} {order['country']}\n"
+                    f"📆 <b>𝐀ᴄᴄᴏᴜɴᴛ 𝐘ᴇᴀʀ:</b> <b>{order['year']}</b>\n"
+                    f"🔐 <b>2𝐅𝐀 𝐏ᴀssᴡᴏʀᴅ:</b> <code>{order['twofa']}</code>\n\n"
+                    f"✅ <b>𝐓ʜᴇ ᴀᴄᴄᴏᴜɴᴛ ɪs ɴᴏᴡ 100% ᴍɪɢʀᴀᴛᴇᴅ ᴛᴏ ʏᴏᴜʀ ɴᴇᴡ ɴᴜᴍʙᴇʀ!</b>\n"
+                    f"𝐘ᴏᴜ ᴄᴀɴ ɴᴏᴡ ʟᴏɢɪɴ ᴅɪʀᴇᴄᴛʟʏ ᴜsɪɴɢ ʏᴏᴜʀ ᴏᴡɴ ɴᴜᴍʙᴇʀ (<code>{new_phone}</code>).</blockquote>"
+                )
+                await loading.edit(success_msg, buttons=[[style_btn("🛒 𝐁ᴜʏ 𝐀ɴᴏᴛʜᴇʀ 𝐀ᴄᴄᴏᴜɴᴛ", "buy_menu_main", "primary", icon=5408995930416362034)]])
+            except PhoneCodeInvalidError:
+                await loading.edit(f"<blockquote>{P_NO} <b>❌ 𝐈ɴᴠᴀʟɪᴅ 𝐎𝐓𝐏 𝐂ᴏᴅᴇ!</b>\n𝐏ʟᴇᴀsᴇ ᴄʜᴇᴄᴋ ᴛʜᴇ ᴄᴏᴅᴇ ᴀɴᴅ sᴇɴᴅ ɪᴛ ᴀɢᴀɪɴ.</blockquote>")
+            except PhoneCodeExpiredError:
+                change_number_state.pop(uid, None)
+                await loading.edit(f"<blockquote>{P_NO} <b>❌ 𝐎𝐓𝐏 𝐄xᴘɪʀᴇᴅ!</b>\n𝐏ʟᴇᴀsᴇ ʀᴇᴛʀʏ ᴄʜᴀɴɢɪɴɢ ɴᴜᴍʙᴇʀ.</blockquote>", buttons=[[style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐎ʀᴅᴇʀ", f"back_to_order|{orig_phone}", "primary", icon=6129812419028982717)]])
+            except Exception as ex:
+                logger.error(f"ChangePhone error: {ex}")
+                await loading.edit(f"<blockquote>{P_NO} <b>❌ 𝐄ʀʀᴏʀ:</b> {str(ex)}</blockquote>", buttons=[[style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐎ʀᴅᴇʀ", f"back_to_order|{orig_phone}", "primary", icon=6129812419028982717)]])
