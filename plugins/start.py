@@ -3,7 +3,7 @@ from telethon import events, types, Button
 from telethon.errors import MessageNotModifiedError
 from database import cur, db, ensure_user, is_user_banned, is_bot_online, is_admin, get_support_url, get_start_image_url
 from utils.keyboards import get_persistent_menu, get_terms_buttons, get_join_buttons, style_btn, style_url
-from utils.helpers import check_channel_joined
+from utils.helpers import check_channel_joined, to_small_caps
 from config import PE_FLOWER, PE_LOCATION, P_OFF, P_INR, JOIN_URLS, TERMS_URL
 from utils.states import session_buy_state, deposit_input
 
@@ -29,24 +29,25 @@ async def send_main_menu(bot, event, uid):
     update_link = JOIN_URLS[0] if JOIN_URLS else support_url
     feedback_link = support_url
     
-    msg = (f"<a href='{start_img}'>&#8203;</a>💬 <b>{html.escape(bot_name)}</b>\n\n"
+    styled_name = to_small_caps(bot_name)
+    
+    msg = (f"<a href='{start_img}'>&#8203;</a>💬 <b>{html.escape(styled_name)}</b>\n\n"
            f"<blockquote expandable>"
-           f"👥 <b>Name:</b> {html.escape(first_name)}\n"
-           f"🪪 <b>User ID:</b> <code>{uid}</code>\n"
-           f"🎯 <b>Username:</b> {username}\n"
-           f"💳 <b>Balance:</b> ₹{bal:.2f}"
-           f"</blockquote>\n"
-           f"───────────────────────────\n"
-           f"✈️ <b>Support :</b> <a href='{support_url}'>{support_handle}</a>")
+           f"👥 <b>𝐍ᴀᴍᴇ:</b> {html.escape(first_name)}\n"
+           f"🪪 <b>𝐔sᴇʀ 𝐈𝐃:</b> <code>{uid}</code>\n"
+           f"🎯 <b>𝐔sᴇʀɴᴀᴍᴇ:</b> {username}\n"
+           f"💳 <b>𝐁ᴀʟᴀɴᴄᴇ:</b> <code>₹{bal:.2f}</code>"
+           f"</blockquote>\n\n"
+           f"<blockquote>✈️ <b>𝐒ᴜᴘᴘᴏʀᴛ :</b> <a href='{support_url}'>{support_handle}</a></blockquote>")
            
     buttons = [
-        [style_btn("📲 Buy Account", b"buy_menu_main", "success", icon=5440627033111557670)],
-        [style_btn("🚀 Social media services", b"smm_menu_main", "success", icon=5408995930416362034)],
-        [style_btn("🛒 Buy Source Codes", b"src_code_menu", "success", icon=5409320020058584473)],
-        [style_btn("🛒 Buy Panels", b"panels_menu", "success", icon=5409098988156629257)],
-        [style_url("💬 Other Content ↗️", update_link, "danger", icon=6129812419028982717)],
-        [style_btn("💳 Recharge", b"depm_upi", "primary", icon=5409271925014801629), style_btn("🧙 Profile", b"profile_stats", "primary", icon=6203982793379154737)],
-        [style_btn("💬 More", b"more_menu", "primary", icon=6129627894349045589), style_url("📑 Feedback ↗️", feedback_link, "primary", icon=6129732880529628243)]
+        [style_btn("📲 𝐁ᴜʏ 𝐀ᴄᴄᴏᴜɴᴛ", b"buy_menu_main", "success", icon=5440627033111557670)],
+        [style_btn("🚀 𝐒ᴏᴄɪᴀʟ ᴍᴇᴅɪᴀ sᴇʀᴠɪᴄᴇs", b"smm_menu_main", "success", icon=5408995930416362034)],
+        [style_btn("🛒 𝐁ᴜʏ 𝐒ᴏᴜʀᴄᴇ 𝐂ᴏᴅᴇs", b"src_code_menu", "success", icon=5409320020058584473)],
+        [style_btn("🛒 𝐁ᴜʏ 𝐏ᴀɴᴇʟs", b"panels_menu", "success", icon=5409098988156629257)],
+        [style_url("💬 𝐎ᴛʜᴇʀ 𝐂ᴏɴᴛᴇɴᴛ ↗️", update_link, "danger", icon=6129812419028982717)],
+        [style_btn("💳 𝐑ᴇᴄʜᴀʀɢᴇ", b"depm_upi", "primary", icon=5409271925014801629), style_btn("🧙 𝐏ʀᴏғɪʟᴇ", b"profile_stats", "primary", icon=6203982793379154737)],
+        [style_btn("💬 𝐌ᴏʀᴇ", b"more_menu", "primary", icon=6129627894349045589), style_url("📑 𝐅ᴇᴇᴅʙᴀᴄᴋ ↗️", feedback_link, "primary", icon=6129732880529628243)]
     ]
     
     if isinstance(event, events.CallbackQuery.Event):
