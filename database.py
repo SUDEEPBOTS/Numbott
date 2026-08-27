@@ -403,9 +403,8 @@ def get_source_codes():
     rows = cur.execute("SELECT id, title, description, price, file_content, available FROM source_codes WHERE available=1").fetchall()
     if not rows:
         defaults = [
-            ("Giveaway & Voting Bot", "Automated Telegram giveaway & voting bot complete source code", 500.0, "https://t.me"),
-            ("High-Speed VC Music Bot", "High-performance Telegram VC music bot source code", 299.0, "https://github.com"),
-            ("Full Store Bot (All Panels & SMM)", "Complete full modular bot source code with all panels & SMM features", 7000.0, "https://t.me")
+            ("Main Store Bot (Full Modular Code)", "Complete full modular bot source code with OTP buying, SMM services, panels & instant delivery.", 500.0, "https://github.com/SUDEEPBOTS/Numbott"),
+            ("OTP & SMM Bot Source Code", "Complete Python Telethon based automated OTP & SMM bot source code.", 299.0, "https://github.com/SUDEEPBOTS/Numbott")
         ]
         for t, d, p, f in defaults:
             cur.execute("INSERT INTO source_codes (title, description, price, file_content) VALUES (?,?,?,?)", (t, d, p, f))
@@ -417,9 +416,8 @@ def get_panels():
     rows = cur.execute("SELECT id, title, description, price, panel_content, available FROM panels WHERE available=1").fetchall()
     if not rows:
         defaults = [
-            ("Premium Fast OTP Panel (Server 1)", "Cheapest & trusted OTP panel with instant API access", 1000.0, "Panel Login URL & API details"),
-            ("Global Multi-Country OTP Panel", "High-success rate multi-country OTP panel with instant delivery", 1000.0, "Panel Login URL & API details"),
-            ("VIP SMM Reseller Panel", "Cheapest SMM reseller panel with over 1500+ services", 399.0, "Panel Login URL & API details")
+            ("VIP SMM Panel (Server 1)", "High-speed VIP SMM reseller panel with instant API access and auto balance top-up.", 399.0, "🔗 Panel URL: https://fathersmm.com\n🔑 API Key: 7693898241322ddfeea23dca2e59fc88\n⚡ Currency: INR\n📖 Guide: Connect this API key in your bot or SMM software for instant ordering."),
+            ("Budget SMM Panel (Server 2 - Cheap)", "Cheapest global SMM panel with over 1500+ bulk services and fast processing.", 399.0, "🔗 Panel URL: https://best-smm.com\n🔑 API Key: cc77a5fe7218f0bc0c38e2a7f768c77f\n⚡ Currency: USD\n📖 Guide: Connect this API key in your bot or SMM software for lowest wholesale rates.")
         ]
         for t, d, p, f in defaults:
             cur.execute("INSERT INTO panels (title, description, price, panel_content) VALUES (?,?,?,?)", (t, d, p, f))

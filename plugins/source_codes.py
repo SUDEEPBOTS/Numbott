@@ -92,7 +92,7 @@ def register_source_codes(bot):
                f"<i>𝐓ʜᴀɴᴋ ʏᴏᴜ ғᴏʀ ʏᴏᴜʀ ᴘᴜʀᴄʜᴀsᴇ!</i></blockquote>")
                
         btns = [
-            [Button.url("📥 Open Link", file_link)],
+            [Button.url("📥 𝐎ᴘᴇɴ 𝐆ɪᴛ𝐇ᴜʙ 𝐑ᴇᴘᴏ ↗️", file_link)],
             [style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐒ᴛᴏʀᴇ", b"src_code_menu", "primary")]
         ]
         try: await e.edit(msg, buttons=btns)

@@ -31,13 +31,13 @@ async def send_main_menu(bot, event, uid):
     
     styled_name = to_small_caps(bot_name)
     
-    msg = (f"<a href='{start_img}'>&#8203;</a><blockquote>💬 <b>{html.escape(styled_name)}</b></blockquote>\n\n"
+    msg = (f"<a href='{start_img}'>&#8203;</a>💬 <b>{html.escape(styled_name)}</b>\n\n"
            f"<blockquote expandable>"
            f"👥 <b>𝐍ᴀᴍᴇ:</b> {html.escape(first_name)}\n"
            f"🪪 <b>𝐔sᴇʀ 𝐈𝐃:</b> <code>{uid}</code>\n"
            f"🎯 <b>𝐔sᴇʀɴᴀᴍᴇ:</b> {username}\n"
            f"💳 <b>𝐁ᴀʟᴀɴᴄᴇ:</b> <code>₹{bal:.2f}</code>"
-           f"</blockquote>\n\n"
+           f"</blockquote>\n"
            f"<blockquote>✈️ <b>𝐒ᴜᴘᴘᴏʀᴛ :</b> <a href='{support_url}'>{support_handle}</a></blockquote>")
            
     buttons = [
