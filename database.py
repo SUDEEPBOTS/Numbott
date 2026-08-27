@@ -112,6 +112,16 @@ def setup_db():
         panel_content TEXT,
         available INTEGER DEFAULT 1
     );
+    CREATE TABLE IF NOT EXISTS redeemed_transactions (
+        email_msg_id TEXT PRIMARY KEY,
+        utr TEXT,
+        txn_id TEXT,
+        amount REAL,
+        user_id INTEGER,
+        date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_redeemed_utr ON redeemed_transactions(utr);
+    CREATE INDEX IF NOT EXISTS idx_redeemed_txn ON redeemed_transactions(txn_id);
     """)
     db.commit()
 
@@ -425,5 +435,30 @@ def get_panels():
         rows = cur.execute("SELECT id, title, description, price, panel_content, available FROM panels WHERE available=1").fetchall()
     return rows
 
+def is_payment_redeemed_db(email_msg_id=None, utr=None, txn_id=None):
+    if email_msg_id and str(email_msg_id).strip():
+        r = cur.execute("SELECT 1 FROM redeemed_transactions WHERE email_msg_id=?", (str(email_msg_id).strip(),)).fetchone()
+        if r: return True
+    if utr and str(utr).strip():
+        u_str = str(utr).strip()
+        r = cur.execute("SELECT 1 FROM redeemed_transactions WHERE utr=?", (u_str,)).fetchone()
+        if r: return True
+        r = cur.execute("SELECT 1 FROM deposits WHERE utr=? AND status='approved'", (u_str,)).fetchone()
+        if r: return True
+    if txn_id and str(txn_id).strip():
+        t_str = str(txn_id).strip()
+        r = cur.execute("SELECT 1 FROM redeemed_transactions WHERE txn_id=?", (t_str,)).fetchone()
+        if r: return True
+        r = cur.execute("SELECT 1 FROM deposits WHERE utr=? AND status='approved'", (t_str,)).fetchone()
+        if r: return True
+    return False
 
-
+def record_redeemed_payment_db(email_msg_id, utr, txn_id, amount, user_id):
+    try:
+        cur.execute("""
+            INSERT OR REPLACE INTO redeemed_transactions (email_msg_id, utr, txn_id, amount, user_id)
+            VALUES (?, ?, ?, ?, ?)
+        """, (email_msg_id or "", utr or "", txn_id or "", amount, user_id))
+        db.commit()
+    except Exception as e:
+        logger.error(f"Error recording redeemed payment: {e}")

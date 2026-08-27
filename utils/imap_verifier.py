@@ -102,6 +102,9 @@ def _sync_verify_utr(utr_query, max_age_mins=MAX_PAYMENT_AGE_MINUTES):
                     clean_text = re.sub(r"\s+", " ", clean_text)
 
                     if utr_clean.lower() in clean_text.lower():
+                        # Extract Message-ID header
+                        msg_id = (msg.get("Message-ID") or "").strip()
+
                         # Extract amount (e.g. received ₹35.0 or ₹35)
                         amt_match = re.search(r"received\s*₹\s*([0-9]+(?:\.[0-9]+)?)", clean_text, re.I)
                         if not amt_match:
@@ -113,9 +116,19 @@ def _sync_verify_utr(utr_query, max_age_mins=MAX_PAYMENT_AGE_MINUTES):
                         sender_match = re.search(r"from\s+([^.]+?)\s*(?:\.|\sat|\swith)", clean_text, re.I)
                         sender = sender_match.group(1).strip() if sender_match else "User"
 
+                        # Extract all identifiers to prevent claiming once with UTR and once with TxnID!
+                        utr_match = re.search(r"UTR[:\s]*([0-9]{6,15})", clean_text, re.I)
+                        detected_utr = utr_match.group(1).strip() if utr_match else (utr_clean if utr_clean.isdigit() else "")
+
+                        txnid_match = re.search(r"transaction\s*id[:\s]*([A-Za-z0-9]+)", clean_text, re.I)
+                        detected_txnid = txnid_match.group(1).strip() if txnid_match else (utr_clean if not utr_clean.isdigit() else "")
+
                         mail.logout()
                         return True, {
                             "utr": utr_clean,
+                            "email_msg_id": msg_id,
+                            "detected_utr": detected_utr,
+                            "detected_txnid": detected_txnid,
                             "amount": int(amt) if amt == int(amt) else amt,
                             "sender": sender,
                             "raw": clean_text[:200]

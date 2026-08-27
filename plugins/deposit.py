@@ -212,11 +212,12 @@ def register_deposit(bot):
                 waiting_proof[uid] = info
                 return await e.reply(f"<blockquote>{P_WARN} <b>Invalid UTR!</b>\n\n𝐏ʟᴇᴀsᴇ ᴇɴᴛᴇʀ ʏᴏᴜʀ valid <b>12-ᴅɪɢɪᴛ 𝐔𝐓𝐑 / 𝐑ᴇғᴇʀᴇɴᴄᴇ 𝐍ᴏ.</b> (ᴏʀ 𝐓ʀᴀɴsᴀᴄᴛɪᴏɴ 𝐈𝐃).</blockquote>")
             
-            # Anti-Duplicate UTR Check
-            dup_check = cur.execute("SELECT id, user_id FROM deposits WHERE utr=? AND status='approved'", (utr_input,)).fetchone()
-            if dup_check:
+            from database import is_payment_redeemed_db, record_redeemed_payment_db
+
+            # Anti-Duplicate UTR / TxnID Pre-check
+            if is_payment_redeemed_db(utr=utr_input, txn_id=utr_input):
                 waiting_proof[uid] = info  # keep active
-                return await e.reply(f"<blockquote>{P_NO} <b>❌ 𝐔𝐓𝐑 𝐀ʟʀᴇᴀᴅʏ 𝐔sᴇᴅ!</b>\n\n𝐓ʜɪs 𝐔𝐓𝐑 / 𝐓ʀᴀɴsᴀᴄᴛɪᴏɴ 𝐈𝐃 (<code>{utr_input}</code>) ʜᴀs ᴀʟʀᴇᴀᴅʏ ʙᴇᴇɴ ʀᴇᴅᴇᴇᴍᴇᴅ!\n<i>𝐃ᴜᴘʟɪᴄᴀᴛᴇ ᴏʀ ғᴀᴋᴇ 𝐔𝐓𝐑s ᴀʀᴇ sᴛʀɪᴄᴛʟʏ ᴘʀᴏʜɪʙɪᴛᴇᴅ.</i></blockquote>")
+                return await e.reply(f"<blockquote>{P_NO} <b>❌ 𝐓ʀᴀɴsᴀᴄᴛɪᴏɴ 𝐀ʟʀᴇᴀᴅʏ 𝐔sᴇᴅ!</b>\n\n𝐓ʜɪs 𝐔𝐓𝐑 / 𝐓ʀᴀɴsᴀᴄᴛɪᴏɴ 𝐈𝐃 (<code>{utr_input}</code>) ʜᴀs ᴀʟʀᴇᴀᴅʏ ʙᴇᴇɴ ʀᴇᴅᴇᴇᴍᴇᴅ!\n<i>𝐃ᴜᴘʟɪᴄᴀᴛᴇ ᴏʀ ʀᴇᴜsᴇᴅ ᴘᴀʏᴍᴇɴᴛs ᴀʀᴇ sᴛʀɪᴄᴛʟʏ ᴘʀᴏʜɪʙɪᴛᴇᴅ.</i></blockquote>")
             
             dep_mode_res = cur.execute("SELECT value FROM settings WHERE key='deposit_mode'").fetchone()
             dep_mode = dep_mode_res[0] if dep_mode_res and dep_mode_res[0] else "auto"
@@ -227,6 +228,20 @@ def register_deposit(bot):
                 ok, v_res = await verify_payment_utr(utr_input)
                 
                 if ok:
+                    # Multi-Identifier Check (Email Message-ID, UTR, TxnID)
+                    msg_id = v_res.get('email_msg_id')
+                    det_utr = v_res.get('detected_utr')
+                    det_txn = v_res.get('detected_txnid')
+                    
+                    if is_payment_redeemed_db(email_msg_id=msg_id, utr=det_utr, txn_id=det_txn):
+                        waiting_proof[uid] = info
+                        fail_text = (f"<blockquote>{P_NO} <b>❌ 𝐏ᴀʏᴍᴇɴᴛ 𝐀ʟʀᴇᴀᴅʏ 𝐑ᴇᴅᴇᴇᴍᴇᴅ!</b>\n\n"
+                                     f"𝐓ʜɪs ᴘᴀʏᴍᴇɴᴛ ʜᴀs ᴀʟʀᴇᴀᴅʏ ʙᴇᴇɴ ᴄʀᴇᴅɪᴛᴇᴅ ᴘʀᴇᴠɪᴏᴜsʟʏ (ᴜsɪɴɢ 𝐔𝐓𝐑/𝐓ʀᴀɴsᴀᴄᴛɪᴏɴ 𝐈𝐃).\n"
+                                     f"<i>𝐄ᴀᴄʜ ᴘᴀʏᴍᴇɴᴛ ᴄᴀɴ ᴏɴʟʏ ʙᴇ ʀᴇᴅᴇᴇᴍᴇᴅ ᴏɴᴄᴇ.</i></blockquote>")
+                        try: await status_msg.edit(fail_text, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
+                        except: await e.reply(fail_text, buttons=[[Button.inline("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action")]])
+                        return
+
                     credited_amt = v_res.get('amount') or final_amt
                     async with get_user_lock(uid):
                         prev_row = cur.execute("SELECT balance FROM users WHERE user_id=?", (uid,)).fetchone()
@@ -235,6 +250,9 @@ def register_deposit(bot):
                         cur.execute("INSERT INTO deposits (user_id, amount, method_name, status, utr) VALUES (?, ?, 'UPI (Auto)', 'approved', ?)",
                                     (uid, credited_amt, utr_input))
                         cur.execute("UPDATE users SET total_deposited = total_deposited + ? WHERE user_id=?", (credited_amt, uid))
+                        
+                        # Lock all identifiers so neither UTR, TxnID, nor Email can ever be used again!
+                        record_redeemed_payment_db(msg_id, det_utr, det_txn, credited_amt, uid)
                         db.commit()
                         
                     await process_referral_bonus(uid, credited_amt)
