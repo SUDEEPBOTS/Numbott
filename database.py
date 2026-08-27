@@ -393,7 +393,7 @@ def get_start_image_url():
     res = cur.execute("SELECT value FROM settings WHERE key='start_image'").fetchone()
     if res and res[0]:
         return res[0].strip()
-    return "https://yukiapi.site/file/GxElfyJf"
+    return "https://yukiapi.site/file/0z3Q9oA9"
 
 def set_start_image_url(url):
     cur.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('start_image', ?)", (url.strip(),))
