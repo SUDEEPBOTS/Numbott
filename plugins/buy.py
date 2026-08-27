@@ -283,6 +283,12 @@ async def show_countries(event, mode, page):
     else: await event.respond(msg, buttons=f_btns)
 
 async def show_years(event, mode, country):
+    if "|" in country:
+        parts = country.split("|")
+        country = parts[-1].strip()
+        if len(parts) > 1 and mode == 'bulk':
+            mode = parts[0].strip()
+            
     bot_mode = get_bot_mode()
     year_options = []
     
@@ -352,6 +358,12 @@ async def show_years(event, mode, country):
     await event.edit(f"<blockquote>{flag} <b>𝐒ᴇʟᴇᴄᴛ 𝐘ᴇᴀʀ & 𝐏ʀɪᴄᴇ ғᴏʀ {country}{cat_label}:</b></blockquote>", buttons=btns)
 
 async def confirm_purchase(event, mode, country, year, price):
+    if "|" in country:
+        parts = country.split("|")
+        country = parts[-1].strip()
+        if len(parts) > 1 and mode == 'bulk':
+            mode = parts[0].strip()
+            
     flag = get_flag_by_country_name(country)
     badge = YEAR_BADGES.get(int(year) if str(year).isdigit() else year, f"📅 {year}")
     
@@ -372,6 +384,12 @@ async def confirm_purchase(event, mode, country, year, price):
     await event.edit(msg, buttons=btns)
 
 async def process_purchase(event, mode, country, year, price_str):
+    if "|" in country:
+        parts = country.split("|")
+        country = parts[-1].strip()
+        if len(parts) > 1 and mode == 'bulk':
+            mode = parts[0].strip()
+            
     uid, price = event.sender_id, int(price_str)
     bot_mode = get_bot_mode()
     
@@ -626,32 +644,27 @@ def register_buy(bot):
         page = int(p.group(2).decode())
         await show_countries_for_year(e, year, page)
 
-    @bot.on(events.CallbackQuery(pattern=r"^bc\|(.+)\|(.+)$"))
+    @bot.on(events.CallbackQuery(pattern=r"^bc\|([^|]+)\|([^|]+)$"))
     async def cb_bc(e):
         p = e.pattern_match
         await show_years(e, p.group(1).decode(), p.group(2).decode())
 
-    @bot.on(events.CallbackQuery(pattern=r"^pg_c\|(.+)\|(\d+)$"))
+    @bot.on(events.CallbackQuery(pattern=r"^pg_c\|([^|]+)\|(\d+)$"))
     async def cb_pg_c(e):
         p = e.pattern_match
         await show_countries(e, p.group(1).decode(), int(p.group(2).decode()))
 
-    @bot.on(events.CallbackQuery(pattern=r"^by\|(.+)\|(.+)\|(\d+)\|(\d+)$"))
+    @bot.on(events.CallbackQuery(pattern=r"^by\|([^|]+)\|([^|]+)\|(\d+)\|(\d+)$"))
     async def cb_by_single(e):
         p = e.pattern_match
         await confirm_purchase(e, p.group(1).decode(), p.group(2).decode(), p.group(3).decode(), p.group(4).decode())
         
-    @bot.on(events.CallbackQuery(pattern=r"^buy_cf\|(.+)\|(.+)\|(\d+)\|(\d+)$"))
+    @bot.on(events.CallbackQuery(pattern=r"^buy_cf\|([^|]+)\|([^|]+)\|(\d+)\|(\d+)$"))
     async def cb_buy_cf_4(e):
         p = e.pattern_match
         await process_purchase(e, p.group(1).decode(), p.group(2).decode(), p.group(3).decode(), p.group(4).decode())
 
-    @bot.on(events.CallbackQuery(pattern=r"^buy_cf\|(.+)\|(\d+)\|(\d+)$"))
-    async def cb_buy_cf_3(e):
-        p = e.pattern_match
-        await process_purchase(e, "bulk", p.group(1).decode(), p.group(2).decode(), p.group(3).decode())
-
-    @bot.on(events.CallbackQuery(pattern=r"^cancel_order\|(.+)$"))
+    @bot.on(events.CallbackQuery(pattern=r"^cancel_order\|([^|]+)$"))
     async def cb_cancel_order(e):
         phone = e.pattern_match.group(1).decode()
         uid = e.sender_id
@@ -685,7 +698,7 @@ def register_buy(bot):
         await e.edit(msg, buttons=[[style_btn("🛒 𝐁ᴜʏ 𝐀ɢᴀɪɴ", "buy_menu_main", "primary", icon=5408995930416362034)]])
         await e.answer("✅ Order Cancelled & Refunded!", alert=True)
 
-    @bot.on(events.CallbackQuery(pattern=r"^get_otp_again\|(.+)$"))
+    @bot.on(events.CallbackQuery(pattern=r"^get_otp_again\|([^|]+)$"))
     async def cb_get_otp_again(e):
         phone = e.pattern_match.group(1).decode()
         if phone not in active_orders: return await e.answer("⚠️ Session expired.", alert=True)
@@ -736,9 +749,9 @@ def register_buy(bot):
             logger.error(f"OTP fetch error for {phone}: {ex}")
             await e.answer("❌ Error fetching OTP.", alert=True)
         
-    @bot.on(events.CallbackQuery(pattern=r"^(finish_order|logout_bot)\|(.+)$"))
+    @bot.on(events.CallbackQuery(pattern=r"^(?:finish_order|logout_bot)\|([^|]+)$"))
     async def cb_finish_order(e):
-        phone = e.pattern_match.group(2).decode()
+        phone = e.pattern_match.group(1).decode()
         if phone in active_orders:
             order = active_orders.pop(phone)
             if 'client' in order and order['client']:
@@ -796,7 +809,7 @@ def register_buy(bot):
                    f"𝐏ʟᴇᴀsᴇ ᴄʜᴇᴄᴋ ᴛʜᴇ sᴘᴇʟʟɪɴɢ ᴏʀ ʙʀᴏᴡsᴇ <b>𝐀ʟʟ 𝐂ᴏᴜɴᴛʀɪᴇs</b>.</blockquote>")
             await e.reply(msg, buttons=f_btns)
 
-    @bot.on(events.CallbackQuery(pattern=r"^chg_num\|(.+)$"))
+    @bot.on(events.CallbackQuery(pattern=r"^chg_num\|([^|]+)$"))
     async def cb_chg_num(e):
         phone = e.pattern_match.group(1).decode()
         uid = e.sender_id
@@ -825,7 +838,7 @@ def register_buy(bot):
         try: await e.edit(msg, buttons=btns)
         except MessageNotModifiedError: pass
 
-    @bot.on(events.CallbackQuery(pattern=r"^back_to_order\|(.+)$"))
+    @bot.on(events.CallbackQuery(pattern=r"^back_to_order\|([^|]+)$"))
     async def cb_back_to_order(e):
         phone = e.pattern_match.group(1).decode()
         uid = e.sender_id
