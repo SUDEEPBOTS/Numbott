@@ -216,11 +216,14 @@ def set_lzt_margin(margin):
     cur.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('lzt_margin', ?)", (str(margin),))
     db.commit()
 
-def get_panel_price(country, year, lzt_price_rub=0):
+def get_panel_price(country, year, lzt_price_rub=0, mode='bulk'):
     # 1. Check if admin has set explicit custom price in auto_prices table for this specific (country, year)
     row = cur.execute("SELECT price FROM auto_prices WHERE country=? AND year=?", (country, str(year))).fetchone()
     if row and row[0] and row[0] > 0:
-        return int(row[0])
+        base = int(row[0])
+        if mode == 'spam':
+            return max(int(base * 0.7), 15)
+        return base
     
     # 2. Get base country price (set with year='Common' or 'ALL')
     row_all = cur.execute("SELECT price FROM auto_prices WHERE country=? AND year IN ('Common', 'ALL')", (country,)).fetchone()
@@ -245,14 +248,20 @@ def get_panel_price(country, year, lzt_price_rub=0):
 
     if base_price is not None:
         add_amount = YEAR_ADDITIONS.get(y_int, 0 if y_int >= 2026 else (2026 - y_int) * 60)
-        return base_price + add_amount
+        total = base_price + add_amount
+        if mode == 'spam':
+            return max(int(total * 0.7), 15)
+        return total
         
     # 3. Dynamic calculation from LZT RUB price if no base price is found
     rub_rate = get_rub_rate()
     margin = get_lzt_margin()
     inr_cost = lzt_price_rub * rub_rate
     calculated = round(inr_cost + margin)
-    return max(int(calculated), 25)
+    final_p = max(int(calculated), 25)
+    if mode == 'spam':
+        return max(int(final_p * 0.7), 15)
+    return final_p
 
 def get_fsub_status():
     res = cur.execute("SELECT value FROM settings WHERE key='fsub_status'").fetchone()

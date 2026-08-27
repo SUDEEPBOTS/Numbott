@@ -89,12 +89,16 @@ async def search_countries_matching(query):
 async def show_buy_menu(event):
     msg = (f"<blockquote>{PE_GIFT} <b>𝐒ᴇʟᴇᴄᴛ 𝐀ᴄᴄᴏᴜɴᴛ 𝐂ᴀᴛᴇɢᴏʀʏ:</b>\n\n"
            f"🔍 <b>𝐒ᴇᴀʀᴄʜ 𝐂ᴏᴜɴᴛʀʏ:</b> 𝐐ᴜɪᴄᴋ ʟᴏᴏᴋᴜᴘ ʙʏ ɴᴀᴍᴇ ᴏʀ ᴅɪᴀʟ ᴄᴏᴅᴇ (+91, +55...)\n"
-           f"🌍 <b>𝐀ʟʟ 𝐂ᴏᴜɴᴛʀɪᴇs:</b> 𝐁ʀᴏᴡsᴇ 50+ ᴄᴏᴜɴᴛʀɪᴇs sᴛᴏᴄᴋ (𝐅ʀᴇsʜ & 𝐀ʟʟ).\n"
-           f"🏛️ <b>𝐎ʟᴅ / 𝐀ɢᴇᴅ 𝐀ᴄᴄᴏᴜɴᴛs:</b> 𝐅ɪʟᴛᴇʀ ʙʏ 𝐒ᴘᴇᴄɪғɪᴄ 𝐘ᴇᴀʀ (2025, 2024, 2023, 2022, 2021...).</blockquote>")
+           f"🟢 <b>𝐍ᴏɴ-𝐒ᴘᴀᴍ / 𝐂ʟᴇᴀɴ:</b> 100% 𝐒ᴘᴀᴍʙʟᴏᴄᴋ-𝐅ʀᴇᴇ (𝐃𝐌 & 𝐏ᴇʀsᴏɴᴀʟ 𝐔sᴇ).\n"
+           f"🟡 <b>𝐒ᴘᴀᴍ / 𝐔sᴇᴅ (𝐂ʜᴇᴀᴘ):</b> 𝐁ᴜᴅɢᴇᴛ 𝐀ᴄᴄᴏᴜɴᴛs (𝐂ʜᴀɴɴᴇʟ 𝐉ᴏɪɴᴇʀs & 𝐌ᴇᴍʙᴇʀs).\n"
+           f"🏛️ <b>𝐎ʟᴅ / 𝐀ɢᴇᴅ 𝐀ᴄᴄᴏᴜɴᴛs:</b> 𝐅ɪʟᴛᴇʀ ʙʏ 𝐒ᴘᴇᴄɪғɪᴄ 𝐘ᴇᴀʀ (2025, 2024, 2023, 2022...).\n"
+           f"🌍 <b>𝐀ʟʟ 𝐂ᴏᴜɴᴛʀɪᴇs:</b> 𝐁ʀᴏᴡsᴇ 50+ ᴄᴏᴜɴᴛʀɪᴇs sᴛᴏᴄᴋ (𝐅ʀᴇsʜ & 𝐀ʟʟ).</blockquote>")
     btns = [
         [style_btn("🔍 𝐒ᴇᴀʀᴄʜ 𝐂ᴏᴜɴᴛʀʏ", b"search_country_btn", "primary", icon=5409098988156629257)],
-        [style_btn("🌍 𝐀ʟʟ 𝐂ᴏᴜɴᴛʀɪᴇs (𝐅ʀᴇsʜ & 𝐀ʟʟ)", b"pg_c|bulk|1", "primary", icon=6154249597532248059)],
-        [style_btn("🏛️ 𝐎ʟᴅ / 𝐀ɢᴇᴅ 𝐀ᴄᴄᴏᴜɴᴛs (ʙʏ 𝐘ᴇᴀʀ)", b"by_years_menu", "success", icon=5408995930416362034)]
+        [style_btn("🟢 𝐍ᴏɴ-𝐒ᴘᴀᴍ / 𝐂ʟᴇᴀɴ 𝐀ᴄᴄᴏᴜɴᴛs", b"pg_c|nonspam|1", "success", icon=5409320020058584473)],
+        [style_btn("🟡 𝐒ᴘᴀᴍ / 𝐔sᴇᴅ 𝐀ᴄᴄᴏᴜɴᴛs (𝐂ʜᴇᴀᴘ)", b"pg_c|spam|1", "primary", icon=5408995930416362034)],
+        [style_btn("🏛️ 𝐎ʟᴅ / 𝐀ɢᴇᴅ 𝐀ᴄᴄᴏᴜɴᴛs (ʙʏ 𝐘ᴇᴀʀ)", b"by_years_menu", "success", icon=5408995930416362034)],
+        [style_btn("🌍 𝐀ʟʟ 𝐂ᴏᴜɴᴛʀɪᴇs (𝐅ʀᴇsʜ & 𝐀ʟʟ)", b"pg_c|bulk|1", "primary", icon=6154249597532248059)]
     ]
     if isinstance(event, events.CallbackQuery.Event):
         try: await event.edit(msg, buttons=btns)
@@ -179,7 +183,14 @@ async def show_countries(event, mode, page):
     ])
     
     total_pages = (total + limit - 1) // limit
-    msg = f"<blockquote>{PE_LOCATION} <b>𝐒ᴇʟᴇᴄᴛ ᴀ 𝐂ᴏᴜɴᴛʀʏ:</b> (𝐏ᴀɢᴇ {page}/{total_pages})</blockquote>"
+    if mode == 'nonspam':
+        cat_header = "🟢 <b>𝐒ᴇʟᴇᴄᴛ 𝐂ᴏᴜɴᴛʀʏ (𝐍ᴏɴ-𝐒ᴘᴀᴍ / 𝐂ʟᴇᴀɴ):</b>"
+    elif mode == 'spam':
+        cat_header = "🟡 <b>𝐒ᴇʟᴇᴄᴛ 𝐂ᴏᴜɴᴛʀʏ (𝐒ᴘᴀᴍ / 𝐔sᴇᴅ - 𝐂ʜᴇᴀᴘ):</b>"
+    else:
+        cat_header = f"{PE_LOCATION} <b>𝐒ᴇʟᴇᴄᴛ ᴀ 𝐂ᴏᴜɴᴛʀʏ:</b>"
+
+    msg = f"<blockquote>{cat_header} (𝐏ᴀɢᴇ {page}/{total_pages})</blockquote>"
     if isinstance(event, events.CallbackQuery.Event):
         try: await event.edit(msg, buttons=f_btns)
         except MessageNotModifiedError: pass
@@ -191,7 +202,13 @@ async def show_years(event, mode, country):
     
     # 1. Check local stock first
     if bot_mode in ('manual', 'hybrid'):
-        rows = cur.execute("SELECT account_year, COUNT(*), price FROM stock WHERE country_name=? AND available=1 GROUP BY account_year, price", (country,)).fetchall()
+        if mode == 'spam':
+            rows = cur.execute("SELECT account_year, COUNT(*), price FROM stock WHERE country_name=? AND available=1 AND (category='Spam' OR category='spam') GROUP BY account_year, price", (country,)).fetchall()
+        elif mode == 'nonspam':
+            rows = cur.execute("SELECT account_year, COUNT(*), price FROM stock WHERE country_name=? AND available=1 AND (category!='Spam' AND category!='spam') GROUP BY account_year, price", (country,)).fetchall()
+        else:
+            rows = cur.execute("SELECT account_year, COUNT(*), price FROM stock WHERE country_name=? AND available=1 GROUP BY account_year, price", (country,)).fetchall()
+            
         for y, count, price in rows:
             year_options.append({
                 'year': y, 'count': count, 'price': price, 'source': 'local'
@@ -200,13 +217,13 @@ async def show_years(event, mode, country):
     # 2. If panel mode, or hybrid with no local stock
     if (bot_mode == 'panel' or (bot_mode == 'hybrid' and not year_options)) and get_lzt_key():
         try:
-            items = await lzt_client.search_items(country)
+            items = await lzt_client.search_items(country, mode=mode)
             # Group by year
             years_grouped = {}
             for itm in items:
                 y = itm['year']
                 if y not in years_grouped:
-                    price = get_panel_price(country, y, itm['price_rub'])
+                    price = get_panel_price(country, y, itm['price_rub'], mode=mode)
                     years_grouped[y] = {'count': 0, 'price': price}
                 years_grouped[y]['count'] += 1
                 
@@ -221,7 +238,7 @@ async def show_years(event, mode, country):
     if not year_options:
         for y in [2026, 2025, 2024, 2023, 2022, 2021]:
             year_options.append({
-                'year': y, 'count': '40+', 'price': get_panel_price(country, y), 'source': 'lzt'
+                'year': y, 'count': '40+', 'price': get_panel_price(country, y, mode=mode), 'source': 'lzt'
             })
     
     flag = get_flag_by_country_name(country)
@@ -232,19 +249,34 @@ async def show_years(event, mode, country):
         cnt_text = f"({count} left)" if isinstance(count, int) else f"({count})"
         btns.append([style_btn(f"{badge} — {P_INR}{price} {cnt_text}", f"by|{mode}|{country}|{y}|{price}", "primary", icon=5408995930416362034)])
     btns.append([style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐂ᴏᴜɴᴛʀɪᴇs", f"pg_c|{mode}|1", "danger", icon=6129812419028982717)])
-    await event.edit(f"<blockquote>{flag} <b>𝐒ᴇʟᴇᴄᴛ 𝐘ᴇᴀʀ & 𝐏ʀɪᴄᴇ ғᴏʀ {country}:</b></blockquote>", buttons=btns)
+    
+    if mode == 'nonspam': cat_label = " (🟢 𝐍ᴏɴ-𝐒ᴘᴀᴍ)"
+    elif mode == 'spam': cat_label = " (🟡 𝐒ᴘᴀᴍ / 𝐔sᴇᴅ)"
+    else: cat_label = ""
+    
+    await event.edit(f"<blockquote>{flag} <b>𝐒ᴇʟᴇᴄᴛ 𝐘ᴇᴀʀ & 𝐏ʀɪᴄᴇ ғᴏʀ {country}{cat_label}:</b></blockquote>", buttons=btns)
 
-async def confirm_purchase(event, country, year, price):
+async def confirm_purchase(event, mode, country, year, price):
     flag = get_flag_by_country_name(country)
     badge = YEAR_BADGES.get(int(year) if str(year).isdigit() else year, f"📅 {year}")
-    msg = f"<blockquote>{PE_GIFT} <b>𝐂ᴏɴғɪʀᴍ 𝐏ᴜʀᴄʜᴀsᴇ</b>\n\n{P_FLAG} <b>𝐂ᴏᴜɴᴛʀʏ:</b> {flag} {country}\n📆 <b>𝐘ᴇᴀʀ:</b> {badge}\n{P_MONEY} <b>𝐏ʀɪᴄᴇ:</b> {P_INR}{price}\n\n<b>𝐀ʀᴇ ʏᴏᴜ sᴜʀᴇ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ʙᴜʏ?</b></blockquote>"
+    
+    if mode == 'nonspam': cat_badge = "🟢 𝐍ᴏɴ-𝐒ᴘᴀᴍ (100% 𝐂ʟᴇᴀɴ)"
+    elif mode == 'spam': cat_badge = "🟡 𝐒ᴘᴀᴍ / 𝐔sᴇᴅ (𝐂ʜᴇᴀᴘ)"
+    else: cat_badge = "🌍 𝐒ᴛᴀɴᴅᴀʀᴅ"
+
+    msg = (f"<blockquote>{PE_GIFT} <b>𝐂ᴏɴғɪʀᴍ 𝐏ᴜʀᴄʜᴀsᴇ</b>\n\n"
+           f"{P_FLAG} <b>𝐂ᴏᴜɴᴛʀʏ:</b> {flag} {country}\n"
+           f"🏷️ <b>𝐂ᴀᴛᴇɢᴏʀʏ:</b> {cat_badge}\n"
+           f"📆 <b>𝐘ᴇᴀʀ:</b> {badge}\n"
+           f"{P_MONEY} <b>𝐏ʀɪᴄᴇ:</b> {P_INR}{price}\n\n"
+           f"<b>𝐀ʀᴇ ʏᴏᴜ sᴜʀᴇ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ʙᴜʏ?</b></blockquote>")
     btns = [
-        [style_btn("✅ 𝐂ᴏɴғɪʀᴍ 𝐁ᴜʏ", f"buy_cf|{country}|{year}|{price}", "success", icon=5409320020058584473)],
+        [style_btn("✅ 𝐂ᴏɴғɪʀᴍ 𝐁ᴜʏ", f"buy_cf|{mode}|{country}|{year}|{price}", "success", icon=5409320020058584473)],
         [style_btn("❌ 𝐂ᴀɴᴄᴇʟ", "cancel_action", "danger", icon=6129888444245089008)]
     ]
     await event.edit(msg, buttons=btns)
 
-async def process_purchase(event, country, year, price_str):
+async def process_purchase(event, mode, country, year, price_str):
     uid, price = event.sender_id, int(price_str)
     bot_mode = get_bot_mode()
     
@@ -258,7 +290,12 @@ async def process_purchase(event, country, year, price_str):
             return await event.answer("❌ Insufficient Balance!", alert=True)
 
         # Check local stock first
-        local_row = cur.execute("SELECT phone, session_file, twofa FROM stock WHERE country_name=? AND account_year=? AND available=1 LIMIT 1", (country, int(year))).fetchone()
+        if mode == 'spam':
+            local_row = cur.execute("SELECT phone, session_file, twofa FROM stock WHERE country_name=? AND account_year=? AND available=1 AND (category='Spam' OR category='spam') LIMIT 1", (country, int(year))).fetchone()
+        elif mode == 'nonspam':
+            local_row = cur.execute("SELECT phone, session_file, twofa FROM stock WHERE country_name=? AND account_year=? AND available=1 AND (category!='Spam' AND category!='spam') LIMIT 1", (country, int(year))).fetchone()
+        else:
+            local_row = cur.execute("SELECT phone, session_file, twofa FROM stock WHERE country_name=? AND account_year=? AND available=1 LIMIT 1", (country, int(year))).fetchone()
         
         is_local = (bot_mode in ('manual', 'hybrid')) and (local_row is not None)
         
@@ -321,9 +358,9 @@ async def process_purchase(event, country, year, price_str):
         # LZT Panel Purchase Flow
         await event.edit(f"{PE_LIGHTNING} <b>𝐏ʀᴏᴄᴇssɪɴɢ ʏᴏᴜʀ ᴏʀᴅᴇʀ...</b>\n𝐏ʟᴇᴀsᴇ ᴡᴀɪᴛ ᴡʜɪʟᴇ ᴡᴇ ɪɴɪᴛɪᴀʟɪᴢᴇ ᴛʜᴇ sᴇssɪᴏɴ.")
         try:
-            items = await lzt_client.search_items(country, actual_year)
+            items = await lzt_client.search_items(country, actual_year, mode=mode)
             if not items:
-                items = await lzt_client.search_items(country)
+                items = await lzt_client.search_items(country, mode=mode)
             
             if not items:
                 async with get_user_lock(uid):
@@ -518,12 +555,17 @@ def register_buy(bot):
     @bot.on(events.CallbackQuery(pattern=r"^by\|(.+)\|(.+)\|(\d+)\|(\d+)$"))
     async def cb_by_single(e):
         p = e.pattern_match
-        await confirm_purchase(e, p.group(2).decode(), p.group(3).decode(), p.group(4).decode())
+        await confirm_purchase(e, p.group(1).decode(), p.group(2).decode(), p.group(3).decode(), p.group(4).decode())
         
-    @bot.on(events.CallbackQuery(pattern=r"^buy_cf\|(.+)\|(\d+)\|(\d+)$"))
-    async def cb_buy_cf(e):
+    @bot.on(events.CallbackQuery(pattern=r"^buy_cf\|(.+)\|(.+)\|(\d+)\|(\d+)$"))
+    async def cb_buy_cf_4(e):
         p = e.pattern_match
-        await process_purchase(e, p.group(1).decode(), p.group(2).decode(), p.group(3).decode())
+        await process_purchase(e, p.group(1).decode(), p.group(2).decode(), p.group(3).decode(), p.group(4).decode())
+
+    @bot.on(events.CallbackQuery(pattern=r"^buy_cf\|(.+)\|(\d+)\|(\d+)$"))
+    async def cb_buy_cf_3(e):
+        p = e.pattern_match
+        await process_purchase(e, "bulk", p.group(1).decode(), p.group(2).decode(), p.group(3).decode())
 
     @bot.on(events.CallbackQuery(pattern=r"^cancel_order\|(.+)$"))
     async def cb_cancel_order(e):

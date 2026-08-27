@@ -231,8 +231,8 @@ class LZTClient:
         _, bal_rub, _ = await self.get_balance_info()
         return bal_rub
 
-    async def search_items(self, country_name, year=None, limit=20):
-        """Search available Telegram accounts for a country and optional year, filtered by available balance."""
+    async def search_items(self, country_name, year=None, limit=20, mode='bulk'):
+        """Search available Telegram accounts for a country and optional year, filtered by available balance and mode."""
         c_code = get_lzt_code(country_name)
         if not c_code or len(c_code) != 2:
             logger.warning(f"No valid 2-letter ISO country code mapped for '{country_name}'")
@@ -246,6 +246,11 @@ class LZTClient:
             "order_by": "price_to_up",
             "parse_sticky_items": "0"
         }
+        if mode == 'nonspam':
+            params["spamblock"] = "0"
+        elif mode == 'spam':
+            params["spamblock"] = "1"
+
         if balance_rub > 0:
             params["pmax"] = int(balance_rub)
         
@@ -261,6 +266,11 @@ class LZTClient:
                             # 1. STRICT COUNTRY ENFORCEMENT
                             item_c = (item.get("telegram_country") or item.get("country") or "").strip().upper()
                             if item_c != c_code.upper():
+                                continue
+
+                            # Mode spamblock check
+                            sb = item.get("telegram_spam_block")
+                            if mode == 'nonspam' and sb == 1:
                                 continue
 
                             price_rub = item.get("rub_price")
