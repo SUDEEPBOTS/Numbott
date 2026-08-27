@@ -3,7 +3,7 @@ from telethon import events, types, Button
 from telethon.errors import MessageNotModifiedError
 from database import cur, db, ensure_user, is_user_banned, is_bot_online, is_admin, get_support_url, get_start_image_url
 from utils.keyboards import get_persistent_menu, get_terms_buttons, get_join_buttons, style_btn, style_url
-from utils.helpers import check_channel_joined, to_small_caps
+from utils.helpers import check_channel_joined, to_small_caps, send_preview_on_top
 from config import PE_FLOWER, PE_LOCATION, P_OFF, P_INR, JOIN_URLS, TERMS_URL
 from utils.states import session_buy_state, deposit_input
 
@@ -50,20 +50,8 @@ async def send_main_menu(bot, event, uid):
         [style_btn("💬 𝐌ᴏʀᴇ", b"more_menu", "primary", icon=6129627894349045589), style_url("📑 𝐅ᴇᴇᴅʙᴀᴄᴋ ↗️", feedback_link, "primary", icon=6129732880529628243)]
     ]
     
-    preview = types.InputMediaWebPage(url=start_img, force_large_media=True)
-    if isinstance(event, events.CallbackQuery.Event):
-        try:
-            await event.edit(msg, buttons=buttons, link_preview=preview)
-        except Exception:
-            try:
-                await event.edit(msg, buttons=buttons, link_preview=True)
-            except Exception:
-                await event.respond(msg, buttons=buttons, link_preview=True)
-    else:
-        try:
-            await event.respond(msg, buttons=buttons, link_preview=preview)
-        except Exception:
-            await event.respond(msg, buttons=buttons, link_preview=True)
+    edit_id = event.message_id if isinstance(event, events.CallbackQuery.Event) else None
+    await send_preview_on_top(bot, uid, msg, start_img, buttons=buttons, edit_msg_id=edit_id)
 
 
 def register_start(bot):
