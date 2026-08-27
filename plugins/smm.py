@@ -330,8 +330,8 @@ def register_smm(bot):
                         (uid, server, service_id, s.get('name', ''), link, qty, total_price, smm_order_id, 'Processing'))
             db.commit()
             
-            from config import LOG_CHANNELS
-            for ch in LOG_CHANNELS:
+            from database import get_log_channels_db
+            for ch in get_log_channels_db():
                 try:
                     admin_log = (f"<blockquote><b>🚀 𝐍ᴇᴡ 𝐒𝐌𝐌 𝐎ʀᴅᴇʀ</b>\n\n"
                                  f"👤 <b>𝐔sᴇʀ:</b> <code>{uid}</code>\n"

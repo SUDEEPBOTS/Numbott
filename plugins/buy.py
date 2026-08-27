@@ -576,8 +576,9 @@ async def auto_otp_task(phone):
                         cur.execute("DELETE FROM stock WHERE phone=?", (phone,))
                         db.commit()
                         
-                        from config import LOG_CHANNELS, P_YES
-                        for log_ch in LOG_CHANNELS:
+                        from database import get_log_channels_db
+                        from config import P_YES
+                        for log_ch in get_log_channels_db():
                             try:
                                 await bot.send_message(log_ch, f"{P_YES} <b>ACCOUNT SOLD</b>\n\n👤 <b>User:</b> <code>{uid}</code>\n📱 <b>Phone:</b> <code>{phone}</code>\n💰 <b>Price:</b> ₹{order['price']}\n🌍 <b>Country:</b> {order['country']}")
                             except Exception as log_ex:
@@ -935,8 +936,8 @@ def register_buy(bot):
                     cur.execute("DELETE FROM stock WHERE phone=?", (orig_phone,))
                     db.commit()
                     
-                    from config import LOG_CHANNELS
-                    for ch in LOG_CHANNELS:
+                    from database import get_log_channels_db
+                    for ch in get_log_channels_db():
                         try:
                             admin_log = (f"<blockquote><b>🛍️ 𝐍ᴇᴡ 𝐏ᴜʀᴄʜᴀsᴇ (𝐍ᴜᴍʙᴇʀ 𝐌ɪɢʀᴀᴛᴇᴅ)</b>\n\n"
                                          f"👤 <b>𝐔sᴇᴅ 𝐁ʏ:</b> <code>{uid}</code>\n"

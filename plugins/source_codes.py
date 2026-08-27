@@ -74,8 +74,8 @@ def register_source_codes(bot):
             cur.execute("UPDATE users SET balance = balance - ? WHERE user_id=? AND balance >= ?", (price, uid, price))
             db.commit()
             
-        from config import LOG_CHANNELS
-        for ch in LOG_CHANNELS:
+        from database import get_log_channels_db
+        for ch in get_log_channels_db():
             try:
                 admin_log = (f"<blockquote><b>💻 𝐍ᴇᴡ 𝐒ᴏᴜʀᴄᴇ 𝐂ᴏᴅᴇ 𝐏ᴜʀᴄʜᴀsᴇ</b>\n\n"
                              f"👤 <b>𝐔sᴇʀ:</b> <code>{uid}</code>\n"
