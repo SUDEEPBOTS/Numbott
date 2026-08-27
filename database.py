@@ -403,9 +403,9 @@ def get_source_codes():
     rows = cur.execute("SELECT id, title, description, price, file_content, available FROM source_codes WHERE available=1").fetchall()
     if not rows:
         defaults = [
-            ("@vthvotebot ( giveaway bot )", "Automated Telegram giveaway & voting bot source code", 500.0, "https://t.me/vthvotebot"),
-            ("Simple music bot", "High-performance Telegram VC music bot source code", 299.0, "https://github.com"),
-            ("@QuickCodes_bot main code", "Complete QuickCodes full modular bot source code with all panels & SMM", 7000.0, "https://t.me/QuickCodes_bot")
+            ("Giveaway & Voting Bot", "Automated Telegram giveaway & voting bot complete source code", 500.0, "https://t.me"),
+            ("High-Speed VC Music Bot", "High-performance Telegram VC music bot source code", 299.0, "https://github.com"),
+            ("Full Store Bot (All Panels & SMM)", "Complete full modular bot source code with all panels & SMM features", 7000.0, "https://t.me")
         ]
         for t, d, p, f in defaults:
             cur.execute("INSERT INTO source_codes (title, description, price, file_content) VALUES (?,?,?,?)", (t, d, p, f))
@@ -417,9 +417,9 @@ def get_panels():
     rows = cur.execute("SELECT id, title, description, price, panel_content, available FROM panels WHERE available=1").fetchall()
     if not rows:
         defaults = [
-            ("@Quickcodes_bot (server-2) panel", "Cheapest & trusted OTP panel with instant API access", 1000.0, "Panel Login URL & API details"),
-            ("2nd Best otp panel", "High-success rate multi-country OTP panel with instant delivery", 1000.0, "Panel Login URL & API details"),
-            ("Best smm panel", "Cheapest SMM reseller panel with over 1500+ services", 399.0, "https://fathersmm.com")
+            ("Premium Fast OTP Panel (Server 1)", "Cheapest & trusted OTP panel with instant API access", 1000.0, "Panel Login URL & API details"),
+            ("Global Multi-Country OTP Panel", "High-success rate multi-country OTP panel with instant delivery", 1000.0, "Panel Login URL & API details"),
+            ("VIP SMM Reseller Panel", "Cheapest SMM reseller panel with over 1500+ services", 399.0, "Panel Login URL & API details")
         ]
         for t, d, p, f in defaults:
             cur.execute("INSERT INTO panels (title, description, price, panel_content) VALUES (?,?,?,?)", (t, d, p, f))

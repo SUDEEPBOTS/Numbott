@@ -10,7 +10,7 @@ from utils.keyboards import style_btn
 from utils.smm_client import (
     SMM_SERVERS, get_smm_platforms, get_categories_for_platform,
     get_services_for_category, get_smm_service_details, get_service_inr_rate,
-    create_smm_order, get_smm_order_status, PLATFORM_ICONS
+    create_smm_order, get_smm_order_status, PLATFORM_ICONS, PLATFORM_PREMIUM_ICONS
 )
 
 # User state dictionary for SMM orders
@@ -20,8 +20,8 @@ smm_order_state = {}
 async def show_smm_servers(event):
     btns = []
     for s_id, s_info in SMM_SERVERS.items():
-        icon = "🟢" if s_id == 1 else "🟡"
-        btns.append([style_btn(f"{icon} {s_info['name']}", f"smm_srv|{s_id}", "primary")])
+        p_icon = 5408995930416362034 if s_id == 1 else 5409320020058584473
+        btns.append([style_btn(f"{s_info['name']}", f"smm_srv|{s_id}", "primary", icon=p_icon)])
         
     btns.append([style_btn("🔙 𝐁ᴀᴄᴋ ᴛᴏ 𝐌ᴇɴᴜ", b"buy_menu_main", "danger", icon=6129812419028982717)])
     
@@ -43,8 +43,8 @@ async def show_smm_platforms_menu(event, server=1):
     btns = []
     plat_row = []
     for p in platforms:
-        icon = PLATFORM_ICONS.get(p, '🌐')
-        plat_row.append(style_btn(f"{icon} {p}", f"smm_plat|{server}|{p}|1", "primary"))
+        p_icon = PLATFORM_PREMIUM_ICONS.get(p, 6129399728506412489)
+        plat_row.append(style_btn(f"{p}", f"smm_plat|{server}|{p}|1", "primary", icon=p_icon))
         if len(plat_row) == 2:
             btns.append(plat_row)
             plat_row = []

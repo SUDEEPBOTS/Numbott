@@ -7,13 +7,13 @@ from database import to_usd
 
 SMM_SERVERS = {
     1: {
-        'name': 'FatherSMM (Server 1)',
+        'name': '𝐕𝐈𝐏 𝐒ᴇʀᴠᴇʀ 1 (𝐅ᴀsᴛ & 𝐈ɴsᴛᴀɴᴛ)',
         'url': 'https://fathersmm.com/api/v2',
         'key': '7693898241322ddfeea23dca2e59fc88',
         'currency': 'INR'
     },
     2: {
-        'name': 'Best-SMM (Cheap Server 2)',
+        'name': '𝐁ᴜᴅɢᴇᴛ 𝐒ᴇʀᴠᴇʀ 2 (𝐂ʜᴇᴀᴘᴇsᴛ 𝐑ᴀᴛᴇ)',
         'url': 'https://best-smm.com/api/v2',
         'key': 'cc77a5fe7218f0bc0c38e2a7f768c77f',
         'currency': 'USD'
@@ -42,6 +42,17 @@ PLATFORM_ICONS = {
     'TikTok': '🎵',
     'Twitter/X': '🐦',
     'Other Services': '🌐'
+}
+
+PLATFORM_PREMIUM_ICONS = {
+    'Telegram': 5408995930416362034,
+    'Instagram': 5409271925014801629,
+    'WhatsApp': 5440627033111557670,
+    'YouTube': 5409320020058584473,
+    'Facebook': 6154249597532248059,
+    'TikTok': 6203982793379154737,
+    'Twitter/X': 6129732880529628243,
+    'Other Services': 6129399728506412489
 }
 
 async def fetch_smm_services(server=1, force_refresh=False):
