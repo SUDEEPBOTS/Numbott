@@ -39,7 +39,7 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 bot = TelegramClient('bot_session', API_ID, API_HASH)
 bot.parse_mode = 'html'
 
-ADMIN_ID = env_int("ADMIN_ID", 0)
+ADMIN_ID = env_int("ADMIN_ID", env_int("OWNER_ID", 0))
 
 # CHANNELS
 LOG_CHANNEL_ID = env_int("LOG_CHANNEL_ID", 0)

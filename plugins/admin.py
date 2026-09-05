@@ -70,6 +70,6 @@ async def admin_panel_handler(event):
     except: await bot.send_message(event.chat_id, header, buttons=btns)
 
 def register_admin(bot):
-    @bot.on(events.NewMessage(pattern=r"(?i)^(🔐 𝐀ᴅᴍɪɴ 𝐏ᴀɴᴇʟ|🔐 Admin Panel)$"))
+    @bot.on(events.NewMessage(pattern=r"(?i)^([/!]?admin|🔐 𝐀ᴅᴍɪɴ 𝐏ᴀɴᴇʟ|🔐 Admin Panel)$"))
     async def msg_admin(e):
         await admin_panel_handler(e)
