@@ -13,8 +13,15 @@ os.makedirs("sessions", exist_ok=True)
 from plugins import register_all_handlers
 
 async def main():
-    print("✅ Numbott Modular (Telethon) STARTED SUCCESSFULLY")
-    await bot.run_until_disconnected()
+    while True:
+        try:
+            if not bot.is_connected():
+                await bot.connect()
+            print("✅ Numbott Modular (Telethon) STARTED SUCCESSFULLY")
+            await bot.run_until_disconnected()
+        except Exception as err:
+            logger.error(f"⚠️ Numbott disconnected: {err}. Reconnecting in 5s...")
+            await asyncio.sleep(5)
 
 if __name__ == '__main__':
     bot.start(bot_token=BOT_TOKEN)

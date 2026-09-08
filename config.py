@@ -36,7 +36,7 @@ API_ID = env_int("API_ID", 0)
 API_HASH = os.getenv("API_HASH", "")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 
-bot = TelegramClient('bot_session', API_ID, API_HASH)
+bot = TelegramClient('bot_session', API_ID, API_HASH, connection_retries=None, retry_delay=3, auto_reconnect=True)
 bot.parse_mode = 'html'
 
 ADMIN_ID = env_int("ADMIN_ID", env_int("OWNER_ID", 0))
