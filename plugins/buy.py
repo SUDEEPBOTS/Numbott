@@ -439,7 +439,7 @@ async def process_purchase(event, mode, country, year, price_str):
         # Local session processing
         await event.edit(f"{PE_LIGHTNING} <b>𝐏ʀᴏᴄᴇssɪɴɢ ʏᴏᴜʀ ᴏʀᴅᴇʀ...</b>\n𝐏ʟᴇᴀsᴇ ᴡᴀɪᴛ ᴡʜɪʟᴇ ᴡᴇ ɪɴɪᴛɪᴀʟɪᴢᴇ ᴛʜᴇ sᴇssɪᴏɴ.")
         
-        client = TelegramClient(sess, API_ID, API_HASH)
+        client = TelegramClient(sess, API_ID, API_HASH, connection_retries=None, retry_delay=3, auto_reconnect=True)
         try:
             await client.connect()
             if not await client.is_user_authorized():
@@ -495,7 +495,7 @@ async def process_purchase(event, mode, country, year, price_str):
                     if str_sess:
                         try:
                             from telethon.sessions import StringSession
-                            test_client = TelegramClient(StringSession(str_sess), 2040, 'b18441a1ff607e10a989891a5462e627')
+                            test_client = TelegramClient(StringSession(str_sess), 2040, 'b18441a1ff607e10a989891a5462e627', connection_retries=None, retry_delay=3, auto_reconnect=True)
                             await test_client.connect()
                             if await test_client.is_user_authorized():
                                 me = await test_client.get_me()
@@ -544,11 +544,82 @@ async def process_purchase(event, mode, country, year, price_str):
                 db.commit()
             return await event.edit(f"{P_NO} <b>Error initializing account.</b> Money refunded.")
 
+def extract_otp_from_text(text):
+    if not text:
+        return None
+    patterns = [
+        r"(?i)(?:login\s*code|web\s*login\s*code|código\s*de\s*inicio\s*de\s*sesión|код\s*подтверждения)[\s:]*([0-9]{5,6})",
+        r"(?i)(?:code|kod|kód|código|код)[\s:]*([0-9]{5,6})",
+        r"\b([0-9]{5})\b",
+        r"\b([0-9]{6})\b",
+    ]
+    for pat in patterns:
+        m = re.search(pat, text)
+        if m:
+            code = m.group(1) if m.groups() else m.group(0)
+            if code not in {"2024", "2025", "2026", "2027"}:
+                return code
+    return None
+
+async def fetch_order_otp(order):
+    client = order.get('client')
+    start_time = order.get('start_time', 0)
+    
+    # 1. Fetch from Telegram session if client is available
+    if client:
+        try:
+            if not client.is_connected():
+                try:
+                    await client.connect()
+                except Exception as ce:
+                    logger.warning(f"Reconnecting client failed: {ce}")
+            
+            if client.is_connected():
+                msgs = []
+                try:
+                    msgs = await client.get_messages(777000, limit=5)
+                except Exception:
+                    try:
+                        # Preload dialogs to ensure 777000 entity has valid access hash
+                        await client.get_dialogs(limit=10)
+                        msgs = await client.get_messages(777000, limit=5)
+                    except Exception as e:
+                        logger.debug(f"Failed to fetch 777000 messages directly: {e}")
+                        try:
+                            dialogs = await client.get_dialogs(limit=5)
+                            for d in dialogs:
+                                if getattr(d.entity, 'id', None) == 777000 or getattr(d, 'name', '') == 'Telegram':
+                                    msgs = await client.get_messages(d.entity, limit=5)
+                                    break
+                        except Exception:
+                            pass
+                
+                for m in msgs:
+                    if hasattr(m, 'date') and m.date.timestamp() > start_time - 15:
+                        if m.message:
+                            code = extract_otp_from_text(m.message)
+                            if code:
+                                return code
+        except Exception as e:
+            logger.error(f"Error checking Telegram messages: {e}")
+
+    # 2. Check LZT API if this is an LZT order
+    if order.get('is_lzt') and order.get('item_id'):
+        try:
+            lzt_code = await lzt_client.get_otp_code(order['item_id'])
+            if lzt_code:
+                code = extract_otp_from_text(str(lzt_code)) or str(lzt_code).strip()
+                if code and re.match(r"^\d{4,8}$", code):
+                    return code
+        except Exception as lzt_err:
+            logger.debug(f"LZT get_otp_code error: {lzt_err}")
+
+    return None
+
 async def auto_otp_task(phone):
     if phone not in active_orders: return
     
     order = active_orders[phone]
-    client = order['client']
     start_time = order['start_time']
     uid = order['uid']
     msg_id = order['msg_id']
@@ -556,37 +627,28 @@ async def auto_otp_task(phone):
     while time.time() - start_time < AUTO_CANCEL_SECONDS:
         if phone not in active_orders: return 
         try:
-            try:
-                peer = await client.get_input_entity(777000)
-            except Exception:
-                peer = types.InputPeerUser(user_id=777000, access_hash=0)
-            msgs = await client.get_messages(peer, limit=5)
-            code = None
-            for m in msgs:
-                if m.date.timestamp() > start_time - 10: 
-                    if m.message and re.search(OTP_REGEX, m.message) and "Login detected" not in m.message:
-                        code = re.search(OTP_REGEX, m.message).group()
-                        break
+            code = await fetch_order_otp(order)
             
             if code:
                 if not order['paid']:
                     order['paid'] = True
                     async with get_user_lock(uid):
                         cur.execute("INSERT INTO orders (user_id, country, year, price, phone, otp) VALUES (?,?,?,?,?,?)", (uid, order['country'], order['year'], order['price'], phone, code))
-                        cur.execute("DELETE FROM stock WHERE phone=?", (phone,))
+                        if not order.get('is_lzt'):
+                            cur.execute("DELETE FROM stock WHERE phone=?", (phone,))
                         db.commit()
                         
                         from database import get_log_channels_db
                         from config import P_YES
                         for log_ch in get_log_channels_db():
                             try:
-                                await bot.send_message(log_ch, f"{P_YES} <b>ACCOUNT SOLD</b>\n\n👤 <b>User:</b> <code>{uid}</code>\n📱 <b>Phone:</b> <code>{phone}</code>\n💰 <b>Price:</b> ₹{order['price']}\n🌍 <b>Country:</b> {order['country']}")
+                                await bot.send_message(log_ch, f"{P_YES} <b>ACCOUNT SOLD</b>\n\n👤 <b>User:</b> <code>{uid}</code>\n📱 <b>Phone:</b> <code>+{phone}</code>\n💰 <b>Price:</b> ₹{order['price']}\n🌍 <b>Country:</b> {order['country']}")
                             except Exception as log_ex:
                                 logger.error(f"Failed to log sale to {log_ch}: {log_ex}")
                 
                 twofa_text = f"{P_2FA} <b>2FA:</b> <code>{order['twofa']}</code>" if order['twofa'] != "None" else f"🔓 <b>2FA:</b> <code>Disabled (No Password)</code>"
                 msg_text = (f"<blockquote>{PE_CHECK} <b>𝐋ᴀᴛᴇsᴛ 𝐎𝐓𝐏 𝐅ᴇᴛᴄʜᴇᴅ!</b>\n\n"
-                            f"{P_PHONE} <b>𝐏ʜᴏɴᴇ:</b> <code>{phone}</code>\n"
+                            f"{P_PHONE} <b>𝐏ʜᴏɴᴇ:</b> <code>+{phone}</code>\n"
                             f"{P_FLAG} <b>𝐂ᴏᴜɴᴛʀʏ:</b> {order['c_icon']} {order['country']}\n"
                             f"{P_OTP} <b>𝐎𝐓𝐏:</b> <code><tg-spoiler>{code}</tg-spoiler></code>\n"
                             f"{twofa_text}</blockquote>")
@@ -600,7 +662,7 @@ async def auto_otp_task(phone):
                 return 
         except Exception as ex:
             logger.error(f"OTP fetch error for {phone}: {ex}")
-        await asyncio.sleep(6) 
+        await asyncio.sleep(4) 
         
     if phone in active_orders and not active_orders[phone]['paid']:
         order = active_orders.pop(phone)
@@ -710,21 +772,11 @@ def register_buy(bot):
         msg_id = order['msg_id']
         client = order.get('client')
 
-        if not client:
+        if not client and not order.get('is_lzt'):
             return await e.answer("⚠️ Client disconnected.", alert=True)
 
         try:
-            try:
-                peer = await client.get_input_entity(777000)
-            except Exception:
-                peer = types.InputPeerUser(user_id=777000, access_hash=0)
-            msgs = await client.get_messages(peer, limit=5)
-            code = None
-            for m in msgs:
-                if m.date.timestamp() > order['start_time'] - 10:
-                    if m.message and re.search(OTP_REGEX, m.message) and "Login detected" not in m.message:
-                        code = re.search(OTP_REGEX, m.message).group()
-                        break
+            code = await fetch_order_otp(order)
             if code:
                 if not order['paid']:
                     order['paid'] = True
