@@ -824,7 +824,7 @@ async def admin_actions(event):
                 await conv.send_message(f"{P_YES} Restored {count} users.")
 
             elif action_data == "add_fsub" and has_perm(uid, 'p_settings'):
-                resp = await get_reply(f"📢 <b>Enter Channel ID / Username & Join URL:</b>\n\n<i>Format:</i> <code><channel_id> <join_url></code>\n<i>Example:</i>\n<code>-1003875933534 https://t.me/sivamXpruff</code>")
+                resp = await get_reply(f"📢 <b>Enter Channel ID / Username & Join URL:</b>\n\n<i>Format:</i> <code><channel_id> <join_url></code>\n<i>Example:</i>\n<code>-1003875933534 https://t.me/OX_OWNER</code>")
                 text = resp.text.strip()
                 parts = text.split()
                 if len(parts) >= 2:
@@ -848,7 +848,7 @@ async def admin_actions(event):
 
             elif action_data == "set_all_fsub" and has_perm(uid, 'p_settings'):
                 ch_resp = await get_reply(f"📢 <b>Enter all Must-Join Channel IDs (Comma-separated):</b>\n<i>Example: -1003875933534, -1003965638370</i>")
-                url_resp = await get_reply(f"🔗 <b>Enter all Join URLs (Comma-separated, same order):</b>\n<i>Example: https://t.me/sivamXpruff, https://t.me/+z_62d3jVVtkzYTZl</i>")
+                url_resp = await get_reply(f"🔗 <b>Enter all Join URLs (Comma-separated, same order):</b>\n<i>Example: https://t.me/OX_OWNER, https://t.me/+z_62d3jVVtkzYTZl</i>")
                 
                 ch_list = [c.strip() for c in ch_resp.text.split(",") if c.strip()]
                 url_list = [u.strip() for u in url_resp.text.split(",") if u.strip()]

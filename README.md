@@ -43,7 +43,7 @@ LOG_CHANNEL_ID_2=-100387593353
 
 # Must Join Verification Setup
 CHECK_CHANNELS=-1003964347575,-1004481651864,-1003875933534
-JOIN_URLS=https://t.me/I_VIP_RADHE_II,https://t.me/+rdXT1GR_nCg1OTg1,https://t.me/sivamXpruff
+JOIN_URLS=https://t.me/XCROVR,https://t.me/OX_OWNER
 
 # Payment Credentials
 CWALLET_ID=93020854
