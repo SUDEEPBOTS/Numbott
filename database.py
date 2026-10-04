@@ -328,18 +328,18 @@ def get_fsub_channels():
     if res and res[0] is not None:
         val = res[0].strip()
         if not val: return []
-        return [c.strip() for c in val.split(",") if c.strip()]
+        return [c.strip() for c in val.split(",") if c.strip() and not c.strip().startswith('<') and (c.strip().startswith('-') or c.strip().startswith('@') or c.strip().isalnum())]
     raw = os.getenv("CHECK_CHANNELS", "")
-    return [c.strip() for c in raw.split(",") if c.strip()]
+    return [c.strip() for c in raw.split(",") if c.strip() and not c.strip().startswith('<')]
 
 def get_fsub_urls():
     res = cur.execute("SELECT value FROM settings WHERE key='fsub_urls'").fetchone()
     if res and res[0] is not None:
         val = res[0].strip()
         if not val: return []
-        return [u.strip() for u in val.split(",") if u.strip()]
+        return [u.strip() for u in val.split(",") if u.strip() and (u.strip().startswith('http://') or u.strip().startswith('https://'))]
     raw = os.getenv("JOIN_URLS", "")
-    return [u.strip() for u in raw.split(",") if u.strip()]
+    return [u.strip() for u in raw.split(",") if u.strip() and (u.strip().startswith('http://') or u.strip().startswith('https://'))]
 
 def set_fsub_data(channels_list, urls_list):
     ch_str = ",".join([str(c).strip() for c in channels_list if str(c).strip()])

@@ -18,6 +18,8 @@ async def check_channel_joined(bot, uid, is_admin_func):
     for ch in check_channels:
         try:
             ch_str = str(ch).strip()
+            if not ch_str or ch_str.startswith('<') or not (ch_str.startswith('-') or ch_str.startswith('@') or ch_str.isalnum()):
+                continue
             ch_id = int(ch_str) if (ch_str.startswith('-') and ch_str[1:].isdigit()) or ch_str.isdigit() else ch_str
             try:
                 await bot(GetParticipantRequest(channel=ch_id, participant=uid))
@@ -28,10 +30,10 @@ async def check_channel_joined(bot, uid, is_admin_func):
             return False
         except ChatAdminRequiredError:
             logger.error(f"Bot is not admin in channel: {ch}")
-            return False
+            continue
         except Exception as e:
             logger.error(f"Channel Check Error for {ch}: {e}")
-            return False
+            continue
     return True
 
 async def get_unjoined_channels(bot, uid):
@@ -45,6 +47,8 @@ async def get_unjoined_channels(bot, uid):
     for i, ch in enumerate(check_channels):
         try:
             ch_str = str(ch).strip()
+            if not ch_str or ch_str.startswith('<') or not (ch_str.startswith('-') or ch_str.startswith('@') or ch_str.isalnum()):
+                continue
             ch_id = int(ch_str) if (ch_str.startswith('-') and ch_str[1:].isdigit()) or ch_str.isdigit() else ch_str
             try:
                 await bot(GetParticipantRequest(channel=ch_id, participant=uid))
@@ -54,9 +58,9 @@ async def get_unjoined_channels(bot, uid):
         except UserNotParticipantError:
             if i < len(join_urls):
                 unjoined.append((join_urls[i], i + 1))
-        except Exception:
-            if i < len(join_urls):
-                unjoined.append((join_urls[i], i + 1))
+        except Exception as e:
+            logger.error(f"Error checking channel {ch}: {e}")
+            continue
     return unjoined
 
 SMALL_CAPS_MAP = {
