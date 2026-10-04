@@ -3,7 +3,7 @@ from telethon import events, types, Button
 from telethon.errors import MessageNotModifiedError
 from database import cur, db, ensure_user, is_user_banned, is_bot_online, is_admin, get_support_url, get_start_image_url
 from utils.keyboards import get_persistent_menu, get_terms_buttons, get_join_buttons, style_btn, style_url
-from utils.helpers import check_channel_joined, to_small_caps, send_preview_on_top
+from utils.helpers import check_channel_joined, to_small_caps, send_preview_on_top, send_welcome_sticker
 from config import PE_FLOWER, PE_LOCATION, P_OFF, P_INR, JOIN_URLS, TERMS_URL
 from utils.states import session_buy_state, deposit_input
 
@@ -114,6 +114,7 @@ def register_start(bot):
                 msg = f"<blockquote>{PE_FLOWER} <b>𝐓ᴇʀᴍs & 𝐂ᴏɴᴅɪᴛɪᴏɴs</b></blockquote>\n<blockquote>𝐏ʟᴇᴀsᴇ ʀᴇᴀᴅ ᴀɴᴅ ᴀᴄᴄᴇᴘᴛ ᴏᴜʀ 𝐓ᴇʀᴍs & 𝐂ᴏɴᴅɪᴛɪᴏɴs ʙᴇғᴏʀᴇ ᴜsɪɴɢ ᴛʜᴇ ʙᴏᴛ.</blockquote>"
                 return await e.respond(msg, buttons=get_terms_buttons())
 
+            await send_welcome_sticker(bot, uid)
             await send_main_menu(bot, e, uid)
         except Exception as ex: 
             print(f"Start Error: {ex}")

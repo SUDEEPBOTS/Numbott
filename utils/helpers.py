@@ -106,4 +106,36 @@ async def send_preview_on_top(bot, peer, message, url, buttons=None, edit_msg_id
             except: pass
         return await bot.send_message(peer, message, buttons=buttons, parse_mode='html', link_preview=True)
 
+async def send_welcome_sticker(bot, chat_id):
+    """Sends a welcome sticker with persistent reply keyboard attached to activate user bottom keyboard."""
+    import aiohttp
+    from config import BOT_TOKEN, logger
+    from utils.keyboards import get_reply_keyboard_markup, get_persistent_menu
+    
+    WELCOME_STICKER = "CAACAgIAAxUAAWrCTjzXDWIupK30yxH6YvvXLTRgAALEiwEAAWOLRgwwhY-vbIjhBj0E"
+    try:
+        data = {
+            "chat_id": chat_id,
+            "sticker": WELCOME_STICKER,
+            "reply_markup": get_reply_keyboard_markup(chat_id)
+        }
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"https://api.telegram.org/bot{BOT_TOKEN}/sendSticker",
+                json=data,
+                timeout=aiohttp.ClientTimeout(total=4)
+            ) as resp:
+                if resp.status == 200:
+                    return True
+    except Exception as e:
+        logger.error(f"Error sending welcome sticker: {e}")
+    
+    # Fallback to Telethon message with persistent keyboard
+    try:
+        await bot.send_message(chat_id, "⚡ <b>Welcome! Keyboard activated.</b>", parse_mode="html", buttons=get_persistent_menu(chat_id))
+        return True
+    except Exception as e:
+        logger.error(f"Fallback keyboard error: {e}")
+        return False
+
 

@@ -5,7 +5,7 @@ from database import cur, db, get_support_url, to_usd, get_flag_by_country_name,
 from config import P_NO, P_MONEY, P_INR, P_GIFT, P_USERS, PE_LOCATION, PE_GIFT, PE_CROWN
 from utils.states import session_buy_state, deposit_input, active_orders, waiting_proof
 from plugins.start import send_main_menu
-from utils.helpers import check_channel_joined
+from utils.helpers import check_channel_joined, send_welcome_sticker
 from utils.keyboards import style_btn, style_url
 from utils.lzt import COUNTRY_TO_LZT
 
@@ -165,6 +165,7 @@ def register_callbacks(bot):
         db.commit()
         await e.answer("✅ Terms Accepted!", alert=True)
         await e.delete()
+        await send_welcome_sticker(bot, uid)
         await send_main_menu(bot, e, uid)
 
     @bot.on(events.CallbackQuery(pattern=b"^tc_reject$"))
@@ -203,6 +204,7 @@ def register_callbacks(bot):
                 except MessageNotModifiedError: pass
             else:
                 await e.delete()
+                await send_welcome_sticker(bot, uid)
                 await send_main_menu(bot, e, uid)
         else:
             # Show only unjoined channels

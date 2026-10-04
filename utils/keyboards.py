@@ -39,6 +39,23 @@ def get_persistent_menu(uid):
         buttons.append([Button.text("🔐 𝐀ᴅᴍɪɴ 𝐏ᴀɴᴇʟ", style="danger", icon=5409166771330494453)])
     return buttons
 
+def get_reply_keyboard_markup(uid):
+    from database import is_admin
+    kb = [
+        [{"text": "🛒 𝐁ᴜʏ 𝐀ᴄᴄᴏᴜɴᴛ"}, {"text": "💳 𝐃ᴇᴘᴏsɪᴛ"}],
+        [{"text": "👤 𝐏ʀᴏғɪʟᴇ"}, {"text": "📦 𝐌ʏ 𝐎ʀᴅᴇʀs"}],
+        [{"text": "💰 𝐁ᴀʟᴀɴᴄᴇ"}, {"text": "📊 𝐒ᴛᴏᴄᴋ"}],
+        [{"text": "🎁 𝐑ᴇғᴇʀ"}, {"text": "📩 𝐒ᴜᴘᴘᴏʀᴛ"}],
+        [{"text": "🏠 𝐒ᴛᴀʀᴛ"}]
+    ]
+    if is_admin(uid):
+        kb.append([{"text": "🔐 𝐀ᴅᴍɪɴ 𝐏ᴀɴᴇʟ"}])
+    return {
+        "keyboard": kb,
+        "resize_keyboard": True,
+        "is_persistent": True
+    }
+
 def get_support_buttons():
     buttons = [
         [Button.url("📩 Support", get_support_url())],
