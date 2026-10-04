@@ -107,32 +107,27 @@ async def send_preview_on_top(bot, peer, message, url, buttons=None, edit_msg_id
         return await bot.send_message(peer, message, buttons=buttons, parse_mode='html', link_preview=True)
 
 async def send_welcome_sticker(bot, chat_id):
-    """Sends a welcome sticker with persistent reply keyboard attached to activate user bottom keyboard."""
-    import aiohttp
-    from config import BOT_TOKEN, logger
-    from utils.keyboards import get_reply_keyboard_markup, get_persistent_menu
+    """Sends a local welcome animated sticker with Telethon colored & premium custom emoji reply keyboard."""
+    import os
+    from config import logger
+    from utils.keyboards import get_persistent_menu
+    from telethon.tl.types import ReplyKeyboardMarkup
     
-    WELCOME_STICKER = "CAACAgIAAxUAAWrCTjzXDWIupK30yxH6YvvXLTRgAALEiwEAAWOLRgwwhY-vbIjhBj0E"
-    try:
-        data = {
-            "chat_id": chat_id,
-            "sticker": WELCOME_STICKER,
-            "reply_markup": get_reply_keyboard_markup(chat_id)
-        }
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"https://api.telegram.org/bot{BOT_TOKEN}/sendSticker",
-                json=data,
-                timeout=aiohttp.ClientTimeout(total=4)
-            ) as resp:
-                if resp.status == 200:
-                    return True
-    except Exception as e:
-        logger.error(f"Error sending welcome sticker: {e}")
+    markup = bot.build_reply_markup(get_persistent_menu(chat_id))
+    if isinstance(markup, ReplyKeyboardMarkup):
+        markup.resize = True
+        markup.persistent = False
     
-    # Fallback to Telethon message with persistent keyboard
+    sticker_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "welcome_sticker.tgs")
+    if os.path.exists(sticker_path):
+        try:
+            await bot.send_file(chat_id, sticker_path, buttons=markup)
+            return True
+        except Exception as e:
+            logger.error(f"Error sending local sticker: {e}")
+            
     try:
-        await bot.send_message(chat_id, "⚡ <b>Welcome! Keyboard activated.</b>", parse_mode="html", buttons=get_persistent_menu(chat_id))
+        await bot.send_message(chat_id, "⚡ <b>Menu Keyboard Active</b>", parse_mode="html", buttons=markup)
         return True
     except Exception as e:
         logger.error(f"Fallback keyboard error: {e}")
