@@ -57,19 +57,23 @@ async def get_countries_list():
 
     # 2. Panel Mode: all supported countries from catalog
     if bot_mode == 'panel':
-        all_c = set(COUNTRY_TO_LZT.keys())
+        all_c = set()
         try:
             customs = cur.execute("SELECT name FROM custom_countries").fetchall()
             for (c,) in customs: all_c.add(c)
         except: pass
+        if not all_c:
+            all_c = set(COUNTRY_TO_LZT.keys())
         return sorted([(c_name, '40+') for c_name in all_c], key=lambda x: x[0])
 
     # 3. Hybrid Mode: local stock with count + other catalog countries
-    all_c = set(COUNTRY_TO_LZT.keys())
+    all_c = set()
     try:
         customs = cur.execute("SELECT name FROM custom_countries").fetchall()
         for (c,) in customs: all_c.add(c)
     except: pass
+    if not all_c:
+        all_c = set(COUNTRY_TO_LZT.keys())
     
     country_dict = {c_name: '40+' for c_name in all_c}
     local_rows = cur.execute("SELECT country_name, COUNT(*) FROM stock WHERE available=1 GROUP BY country_name").fetchall()
@@ -107,10 +111,18 @@ async def search_countries_matching(query):
         if dial_code:
             for code, (name, _) in COUNTRY_CODES.items():
                 if name == c_name and dial_code == code:
-                    matches.append((c_name, count))
+                    if (c_name, count) not in matches:
+                        matches.append((c_name, count))
+            try:
+                row = cur.execute("SELECT code FROM custom_countries WHERE name=?", (c_name,)).fetchone()
+                if row and row[0] and row[0] == dial_code:
+                    if (c_name, count) not in matches:
+                        matches.append((c_name, count))
+            except: pass
         lzt_code = get_lzt_code(c_name)
         if lzt_code and query_clean == lzt_code.lower():
-            matches.append((c_name, count))
+            if (c_name, count) not in matches:
+                matches.append((c_name, count))
             continue
     return matches
 

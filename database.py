@@ -79,8 +79,8 @@ def setup_db():
         p_settings INTEGER DEFAULT 0
     );
     CREATE TABLE IF NOT EXISTS custom_countries (
-        code TEXT PRIMARY KEY,
-        name TEXT,
+        name TEXT PRIMARY KEY,
+        code TEXT,
         flag TEXT
     );
     CREATE TABLE IF NOT EXISTS smm_orders (
@@ -187,11 +187,17 @@ COUNTRY_CODES = {
 }
 
 def get_flag_by_country_name(name):
+    if not name: return "🌍"
     for code, (c_name, c_flag) in COUNTRY_CODES.items():
         if c_name == name: return c_flag
     try:
         row = cur.execute("SELECT flag FROM custom_countries WHERE name=?", (name,)).fetchone()
-        if row: return row[0]
+        if row and row[0]: return row[0]
+        import re
+        clean = re.sub(r'\s*\(.*?\)', '', name).strip()
+        if clean != name:
+            row = cur.execute("SELECT flag FROM custom_countries WHERE name=?", (clean,)).fetchone()
+            if row and row[0]: return row[0]
     except: pass
     return "🌍"
 
@@ -256,17 +262,40 @@ def set_lzt_margin(margin):
     db.commit()
 
 def get_panel_price(country, year, lzt_price_rub=0, mode='bulk'):
-    # 1. Check if admin has set explicit custom price in auto_prices table for this specific (country, year)
-    row = cur.execute("SELECT price FROM auto_prices WHERE country=? AND year=?", (country, str(year))).fetchone()
-    if row and row[0] and row[0] > 0:
-        base = int(row[0])
-        if mode == 'spam':
-            return max(int(base * 0.7), 15)
-        return base
-    
-    # 2. Get base country price (set with year='Common' or 'ALL')
-    row_all = cur.execute("SELECT price FROM auto_prices WHERE country=? AND year IN ('Common', 'ALL')", (country,)).fetchone()
-    base_price = int(row_all[0]) if (row_all and row_all[0] and row_all[0] > 0) else None
+    import re
+    candidates = [country]
+    if '(' in country:
+        candidates.append(re.sub(r'\s*\(.*?\)', '', country).strip())
+    if ' & ' in country:
+        candidates.append(country.replace(' & ', ' and '))
+    elif ' and ' in country:
+        candidates.append(country.replace(' and ', ' & '))
+
+    # 1. If mode == 'spam', return exact Spam price from auto_prices if set
+    if mode == 'spam':
+        for c in candidates:
+            spam_row = cur.execute("SELECT price FROM auto_prices WHERE country=? AND year='Spam'", (c,)).fetchone()
+            if spam_row and spam_row[0] and spam_row[0] > 0:
+                return int(spam_row[0])
+
+    # 2. Check explicit custom price for this specific (country, year)
+    for c in candidates:
+        row = cur.execute("SELECT price FROM auto_prices WHERE country=? AND year=?", (c, str(year))).fetchone()
+        if row and row[0] and row[0] > 0:
+            base = int(row[0])
+            if mode == 'spam':
+                return max(int(base * 0.55), 15)
+            elif mode == 'premium':
+                return base + 150
+            return base
+
+    # 3. Check base country price (Common / ALL / 2026 / Fresh)
+    base_price = None
+    for c in candidates:
+        row_all = cur.execute("SELECT price FROM auto_prices WHERE country=? AND year IN ('Common', 'ALL', '2026', 'Fresh')", (c,)).fetchone()
+        if row_all and row_all[0] and row_all[0] > 0:
+            base_price = int(row_all[0])
+            break
 
     # Aged year price additions (if no explicit year price is set)
     YEAR_ADDITIONS = {
@@ -289,17 +318,19 @@ def get_panel_price(country, year, lzt_price_rub=0, mode='bulk'):
         add_amount = YEAR_ADDITIONS.get(y_int, 0 if y_int >= 2026 else (2026 - y_int) * 60)
         total = base_price + add_amount
         if mode == 'spam':
-            return max(int(total * 0.7), 15)
+            return max(int(total * 0.55), 15)
+        elif mode == 'premium':
+            return total + 150
         return total
-        
-    # 3. Dynamic calculation from LZT RUB price if no base price is found
+
+    # 4. Fallback to dynamic calculation from LZT RUB price if no base price is found
     rub_rate = get_rub_rate()
     margin = get_lzt_margin()
     inr_cost = lzt_price_rub * rub_rate
     calculated = round(inr_cost + margin)
     final_p = max(int(calculated), 25)
     if mode == 'spam':
-        return max(int(final_p * 0.7), 15)
+        return max(int(final_p * 0.55), 15)
     elif mode == 'premium':
         return final_p + 150
     return final_p
