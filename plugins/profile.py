@@ -82,6 +82,10 @@ def register_profile(bot):
     async def msg_profile(e):
         await profile_handler(bot, e)
 
+    @bot.on(events.CallbackQuery(pattern=b"^profile_stats$"))
+    async def cb_profile_stats(e):
+        await stats_handler(bot, e, is_callback=True)
+
     @bot.on(events.NewMessage(pattern=r"(?i)^(My Stats)$"))
     async def msg_stats(e):
         await stats_handler(bot, e)
@@ -95,7 +99,3 @@ def register_profile(bot):
     async def cb_back_to_stats(e):
         await stats_handler(bot, e, is_callback=True)
 
-    @bot.on(events.CallbackQuery(pattern=r"^view_referrals$"))
-    async def cb_view_referrals(e):
-        refs = cur.execute("SELECT user_id FROM users WHERE referred_by=?", (e.sender_id,)).fetchall()
-        await e.answer(f"👥 You have referred {len(refs)} user(s).", alert=True)

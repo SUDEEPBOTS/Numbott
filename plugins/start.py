@@ -1,31 +1,64 @@
-from telethon import events, types
+import html
+from telethon import events, types, Button
 from telethon.errors import MessageNotModifiedError
-from database import cur, db, ensure_user, is_user_banned, is_bot_online, is_admin
-from utils.keyboards import get_persistent_menu, get_terms_buttons, get_join_buttons
-from utils.helpers import check_channel_joined
-from config import PE_FLOWER, PE_LOCATION, P_OFF, PE_HEART, PE_GIFT, P_GIFT, P_GLOBE, P_INR
+from database import cur, db, ensure_user, is_user_banned, is_bot_online, is_admin, get_support_url, get_start_image_url
+from utils.keyboards import get_persistent_menu, get_terms_buttons, get_join_buttons, style_btn, style_url
+from utils.helpers import check_channel_joined, to_small_caps, send_preview_on_top
+from config import PE_FLOWER, PE_LOCATION, P_OFF, P_INR, JOIN_URLS, TERMS_URL
 from utils.states import session_buy_state, deposit_input
 
 async def send_main_menu(bot, event, uid):
     me = await bot.get_me()
-    pct_row = cur.execute("SELECT value FROM settings WHERE key='ref_percent'").fetchone()
-    pct = pct_row[0] if pct_row else "3"
-    bal_row = cur.execute("SELECT balance FROM users WHERE user_id=?", (uid,)).fetchone()
-    bal = bal_row[0] if bal_row else 0
-    bot_username = me.username or ""
-    PFP_URL = "assets/image.jpg"
-    msg = (f"<blockquote>{PE_HEART} <b>𝐖ᴇʟᴄᴏᴍᴇ ᴛᴏ 𝐅ʀᴇsʜ 𝐓ɢ 𝐒ᴛᴏʀᴇ!</b></blockquote>\n\n"
-           f"<blockquote>{PE_GIFT} <b>𝐏ʀᴇᴍɪᴜᴍ sᴇʀᴠɪᴄᴇs:</b> 𝐁ᴜʏ ᴀᴄᴄᴏᴜɴᴛs, sᴇssɪᴏɴs, ᴀɴᴅ ᴛᴏᴘ ᴜᴘ ɪɴsᴛᴀɴᴛʟʏ.</blockquote>\n\n"
-           f"<blockquote>{P_GIFT} <b>𝐑ᴇғᴇʀ & 𝐄ᴀʀɴ:</b>\n𝐈ɴᴠɪᴛᴇ ғʀɪᴇɴᴅs ᴀɴᴅ ᴇᴀʀɴ {pct}% ᴏғ ᴛʜᴇɪʀ ᴅᴇᴘᴏsɪᴛs!\n"
-           f"{P_GLOBE} <code>https://t.me/{bot_username}?start=ref_{uid}</code></blockquote>\n\n"
-           f"<blockquote>💰 <b>𝐁ᴀʟᴀɴᴄᴇ:</b> {P_INR}{bal}</blockquote>\n\n"
-           f"<blockquote>👨‍💻 <b>𝐃ᴇᴠᴇʟᴏᴘᴇʀ:</b> <a href='https://t.me/I_VIP_RADHE_II'>𝐌꧊᱂ 𝁛 ꪜᛧƖƖ𝛂ᛧ𝝶</a></blockquote>")
+    bot_name = me.first_name or "Store Bot"
     
-    f = await bot.upload_file(PFP_URL)
-    media = types.InputMediaUploadedPhoto(file=f)
-    await bot.send_file(uid, media, caption=msg, buttons=get_persistent_menu(uid))
+    bal_row = cur.execute("SELECT balance FROM users WHERE user_id=?", (uid,)).fetchone()
+    bal = float(bal_row[0]) if bal_row and bal_row[0] is not None else 0.0
+    
+    try:
+        user_entity = await bot.get_entity(uid)
+        first_name = user_entity.first_name or "User"
+        username = f"@{user_entity.username}" if user_entity.username else "None"
+    except Exception:
+        first_name = "User"
+        username = "None"
+        
+    start_img = get_start_image_url()
+    support_url = get_support_url()
+    support_handle = f"@{support_url.split('/')[-1]}" if support_url.startswith("https://t.me/") else support_url
+    
+    update_link = JOIN_URLS[0] if JOIN_URLS else support_url
+    feedback_link = support_url
+    
+    styled_name = to_small_caps(bot_name)
+    
+    msg = (f"<a href='{start_img}'>&#8203;</a>💬 <b>{html.escape(styled_name)}</b>\n\n"
+           f"<blockquote expandable>"
+           f"👥 <b>𝐍ᴀᴍᴇ:</b> {html.escape(first_name)}\n"
+           f"🪪 <b>𝐔sᴇʀ 𝐈𝐃:</b> <code>{uid}</code>\n"
+           f"🎯 <b>𝐔sᴇʀɴᴀᴍᴇ:</b> {username}\n"
+           f"💳 <b>𝐁ᴀʟᴀɴᴄᴇ:</b> <code>₹{bal:.2f}</code>"
+           f"</blockquote>\n"
+           f"<blockquote>✈️ <b>𝐒ᴜᴘᴘᴏʀᴛ :</b> <a href='{support_url}'>{support_handle}</a></blockquote>")
+           
+    buttons = [
+        [style_btn("📲 𝐁ᴜʏ 𝐀ᴄᴄᴏᴜɴᴛ", b"open_buy_categories", "success", icon=5440627033111557670)],
+        [style_btn("🚀 𝐒ᴏᴄɪᴀʟ ᴍᴇᴅɪᴀ sᴇʀᴠɪᴄᴇs", b"smm_menu_main", "success", icon=5408995930416362034)],
+        [style_btn("🛒 𝐁ᴜʏ 𝐒ᴏᴜʀᴄᴇ 𝐂ᴏᴅᴇs", b"src_code_menu", "success", icon=5409320020058584473)],
+        [style_btn("🛒 𝐁ᴜʏ 𝐏ᴀɴᴇʟs", b"panels_menu", "success", icon=5409098988156629257)],
+        [style_url("💬 𝐎ᴛʜᴇʀ 𝐂ᴏɴᴛᴇɴᴛ ↗️", update_link, "danger", icon=6129812419028982717)],
+        [style_btn("💳 𝐑ᴇᴄʜᴀʀɢᴇ", b"open_deposit_menu", "primary", icon=5409271925014801629), style_btn("🧙 𝐏ʀᴏғɪʟᴇ", b"profile_stats", "primary", icon=6203982793379154737)],
+        [style_btn("💬 𝐌ᴏʀᴇ", b"more_menu", "primary", icon=6129627894349045589), style_url("📑 𝐅ᴇᴇᴅʙᴀᴄᴋ ↗️", feedback_link, "primary", icon=6129732880529628243)]
+    ]
+    
+    edit_id = event.message_id if isinstance(event, events.CallbackQuery.Event) else None
+    await send_preview_on_top(bot, uid, msg, start_img, buttons=buttons, edit_msg_id=edit_id)
+
 
 def register_start(bot):
+    @bot.on(events.CallbackQuery(pattern=r"^(dashboard_main|back_to_dashboard|buy_menu_main)$"))
+    async def cb_dashboard_main(e):
+        await send_main_menu(bot, e, e.sender_id)
+
     @bot.on(events.NewMessage(pattern=r"(?i)^(/start|🏠 𝐒ᴛᴀʀᴛ)"))
     async def handle_start(e):
         try:
@@ -49,8 +82,10 @@ def register_start(bot):
                 if start_param.startswith("ref_"):
                     ref = start_param.replace("ref_", "")
                     if ref.isdigit() and int(ref) != uid and is_new:
-                        cur.execute("UPDATE users SET referred_by=? WHERE user_id=? AND referred_by IS NULL", (int(ref), uid))
-                        db.commit()
+                        ref_exists = cur.execute("SELECT 1 FROM users WHERE user_id=?", (int(ref),)).fetchone()
+                        if ref_exists:
+                            cur.execute("UPDATE users SET referred_by=? WHERE user_id=? AND referred_by IS NULL", (int(ref), uid))
+                            db.commit()
 
             PFP_URL = "assets/image.jpg"
             is_joined = await check_channel_joined(bot, uid, is_admin)
@@ -61,9 +96,12 @@ def register_start(bot):
                 
                 unjoined = await get_unjoined_channels(bot, uid)
                 remaining = len(unjoined)
-                msg = f"<blockquote>{PE_FLOWER} <b>𝐘ᴏᴜ ᴍᴜsᴛ ᴊᴏɪɴ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs ғɪʀsᴛ!</b></blockquote>\n<blockquote>{PE_LOCATION} {remaining} ᴄʜᴀɴɴᴇʟ(s) ʀᴇᴍᴀɪɴɪɴɢ. 𝐉ᴏɪɴ ᴀɴᴅ ᴛᴀᴘ <b>𝐕ᴇʀɪғʏ 𝐉ᴏɪɴᴇᴅ</b>.</blockquote>"
+                msg = f"<blockquote>{PE_FLOWER} <b>𝐘ᴏᴜ ᴍᴜsᴛ ᴊᴏɪɴ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs & ɢʀᴏᴜᴘ ғɪʀsᴛ!</b></blockquote>\n<blockquote>{PE_LOCATION} {remaining} ᴄʜᴀɴɴᴇʟ(s)/ɢʀᴏᴜᴘ(s) ʀᴇᴍᴀɪɴɪɴɢ. 𝐉ᴏɪɴ ᴀɴᴅ ᴛᴀᴘ <b>𝐕ᴇʀɪғʏ 𝐉ᴏɪɴᴇᴅ</b>.</blockquote>"
                 
-                buttons = [[Button.url(f"📢 Join Channel {idx}", url)] for url, idx in unjoined]
+                buttons = []
+                for url, idx in unjoined:
+                    btn_label = "💬 𝐉ᴏɪɴ 𝐆ʀᴏᴜᴘ" if ("+" in url or "joinchat" in url or idx == 2) else "📢 𝐉ᴏɪɴ 𝐂ʜᴀɴɴᴇʟ"
+                    buttons.append([Button.url(btn_label, url)])
                 buttons.append([style_btn("𝐕ᴇʀɪғʏ 𝐉ᴏɪɴᴇᴅ", b"verify_join", "success", icon=6129627894349045589)])
                 
                 f = await bot.upload_file(PFP_URL)
